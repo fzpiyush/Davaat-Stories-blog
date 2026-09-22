@@ -2,25 +2,55 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #2d2a26;
+
+  --surface: #faf9f7;
+  --surface-muted: #f3f1ed;
+
+  --muted: #6f6a63;
+
+  --accent: #9a6b4f;
+  --accent-foreground: #ffffff;
+
+  --border: #e7e2db;
+}
+
+[data-theme="dark"] {
+  --background: #212121;
+  --foreground: #ececec;
+
+  --surface: #2f2f2f;
+  --surface-muted: #383838;
+
+  --muted: #a9a9a9;
+
+  --accent: #c99a78;
+  --accent-foreground: #211b17;
+
+  --border: #454545;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+
+  --color-muted: var(--muted);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-border: var(--border);
+
+  --font-sans: var(--font-inter);
+  --font-serif: var(--font-lora);
 }
 
 body {
+  min-height: 100%;
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), sans-serif;
 }

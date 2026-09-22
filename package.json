@@ -6,13 +6,20 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:migrate": "knex migrate:latest --knexfile knexfile.ts",
+    "db:rollback": "knex migrate:rollback --knexfile knexfile.ts",
+    "db:make": "knex migrate:make --knexfile knexfile.ts --migrations-directory db/migrations -x ts"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
+    "google-auth-library": "^11.1.0",
+    "knex": "^3.3.0",
     "next": "16.3.4",
+    "pg": "^8.23.0",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -20,6 +27,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
+    "dotenv": "^18.0.2",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
     "tailwindcss": "^4",

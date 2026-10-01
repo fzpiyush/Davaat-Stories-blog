@@ -3,27 +3,20 @@ import { config as loadEnv } from "dotenv";
 
 loadEnv({ path: ".env.local" });
 
-const config: { [key: string]: Knex.Config } = {
-  development: {
-    client: "pg",
-    connection: process.env.DATABASE_URL,
-    migrations: {
-      directory: "./db/migrations",
-      extension: "ts",
-    },
+// Both use the Supabase session pooler (port 5432).
+// Session mode is safe for migrations, unlike the transaction pooler on 6543.
+const base: Knex.Config = {
+  client: "pg",
+  pool: { min: 0, max: 5 },
+  migrations: {
+    directory: "./db/migrations",
+    extension: "ts",
   },
+};
 
-  // Migrations use the direct connection, not the pooler. DDL on a
-  // transaction pooler can fail or hang, and a migration is a long-lived
-  // connection doing exactly what the pooler is not built for.
-  staging: {
-    client: "pg",
-    connection: process.env.STAGING_DATABASE_URL,
-    migrations: {
-      directory: "./db/migrations",
-      extension: "ts",
-    },
-  },
+const config: { [key: string]: Knex.Config } = {
+  development: { ...base, connection: process.env.DATABASE_URL },
+  production: { ...base, connection: process.env.PRODUCTION_DATABASE_URL },
 };
 
 export default config;

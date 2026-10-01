@@ -3,7 +3,7 @@ export type NavItem = {
   href: string;
 };
 
-export const SITE_NAME = "DI World";
+export const SITE_NAME = "Davaat Imagine World";
 export const SITE_TAGLINE = "Thoughts. Blogs. Stories. A better you.";
 
 export const mainNav = [

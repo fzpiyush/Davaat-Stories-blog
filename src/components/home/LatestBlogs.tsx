@@ -25,7 +25,7 @@ export default function LatestBlogs({
   return (
     <section
       aria-labelledby="latest-blogs-heading"
-      className="w-full max-w-7xl grid gap-8 sm:gap-10 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end mx-auto px-6 pb-20 lg:px-8"
+      className="w-full max-w-7xl 2xl:max-w-360 px-4 pb-12 sm:px-6 sm:pb-16 lg:px-8 lg:pb-20 mx-auto grid gap-8 sm:gap-10 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end"
     >
       <div className="flex flex-col gap-3">
         <p className="text-sm font-medium uppercase tracking-[0.2em] text-accent">
@@ -34,7 +34,7 @@ export default function LatestBlogs({
 
         <h2
           id="latest-blogs-heading"
-          className="text-balance font-serif text-4xl sm:text-5xl text-foreground"
+          className="font-serif text-3xl sm:text-4xl lg:text-5xl text-balance text-foreground"
         >
           Latest from the blog
         </h2>
@@ -53,7 +53,7 @@ export default function LatestBlogs({
 
       <ul
         role="list"
-        className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-8 sm:col-span-2"
+        className="grid gap-6 sm:col-span-2 md:grid-cols-2 lg:grid-cols-3 lg:gap-8"
       >
         {latestBlogs.map((blog) => (
           <li key={blog.id} className="flex">

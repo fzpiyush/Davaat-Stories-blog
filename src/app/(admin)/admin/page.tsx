@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { requireAdmin } from "@/lib/auth/session";
 import { blogs } from "@/lib/blog/mockBlogs";
 
 export const metadata: Metadata = {
@@ -32,7 +33,9 @@ function StatCard({ label, value }: Stat) {
   );
 }
 
-export default function AdminDashboardPage() {
+export default async function AdminDashboardPage() {
+  await requireAdmin();
+
   const stats: Stat[] = [
     { label: "Blogs", value: blogs.length },
     { label: "Stories", value: null },

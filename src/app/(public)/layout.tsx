@@ -12,10 +12,10 @@ export default function PublicLayout({
   children,
 }: Readonly<PublicLayoutProps>) {
   return (
-    <div className="w-full min-h-screen flex flex-col bg-background text-foreground">
+    <div className="w-full min-h-dvh flex flex-col text-foreground bg-background">
       <Link
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 px-4 py-2 bg-accent rounded-lg text-sm font-medium text-accent-foreground"
+        className="px-4 py-2 text-sm font-medium text-accent-foreground bg-accent rounded-lg sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50"
       >
         Skip to content
       </Link>

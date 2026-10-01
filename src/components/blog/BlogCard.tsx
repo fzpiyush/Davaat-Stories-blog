@@ -24,27 +24,27 @@ export default function BlogCard({
   const Heading = headingLevel;
 
   return (
-    <article className="relative w-full h-full flex flex-col bg-surface rounded-lg overflow-hidden shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-accent has-[a:focus-visible]:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:translate-y-0 group">
-      <div className="relative w-full aspect-16/10 bg-surface-muted overflow-hidden">
+    <article className="w-full h-full flex flex-col bg-surface shadow-sm rounded-lg relative overflow-hidden transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-accent has-[a:focus-visible]:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:translate-y-0 group">
+      <div className="w-full aspect-16/10 bg-surface-muted relative overflow-hidden">
         <Image
           src={blog.image}
           alt=""
           fill
           priority={priority}
-          sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          sizes="(min-width: 1536px) 480px, (min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
           className="object-cover transition-transform duration-500 ease-out group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
         />
       </div>
 
-      <div className="flex flex-1 flex-col gap-3 p-6">
-        <span className="w-fit inline-flex px-3 py-1 bg-surface-muted rounded-full text-xs font-medium text-accent">
+      <div className="p-5 sm:p-6 flex flex-1 flex-col gap-3">
+        <span className="w-fit px-3 py-1 inline-flex text-xs font-medium text-accent bg-surface-muted rounded-full">
           {blog.category}
         </span>
 
-        <Heading className="line-clamp-2 pt-1 font-serif text-2xl leading-tight text-foreground transition-colors duration-200 group-hover:text-accent">
+        <Heading className="pt-1 line-clamp-2 font-serif text-xl sm:text-2xl leading-tight text-foreground transition-colors duration-200 group-hover:text-accent">
           <Link
             href={`/blogs/${blog.slug}`}
-            className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
+            className="focus-visible:outline-none after:absolute after:inset-0 after:content-['']"
           >
             {blog.title}
           </Link>
@@ -54,7 +54,7 @@ export default function BlogCard({
           {blog.excerpt}
         </p>
 
-        <div className="flex items-center justify-between mt-auto pt-6 text-xs text-muted">
+        <div className="mt-auto pt-6 flex items-center justify-between gap-4 text-xs text-muted">
           <div className="flex items-center gap-2">
             <time dateTime={date.iso}>{date.label}</time>
             <span aria-hidden="true">•</span>

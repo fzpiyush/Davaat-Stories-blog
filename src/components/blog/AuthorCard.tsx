@@ -7,18 +7,29 @@ export default function AuthorCard({
   name,
   bio = "Writing about technology, life, ideas, and the lessons I learn along the way.",
 }: AuthorCardProps) {
+  const initial = name.trim().charAt(0).toUpperCase();
+
   return (
     <aside
       aria-label="About the author"
-      className="w-full flex flex-col gap-3 p-6 sm:p-8 bg-surface-muted rounded-lg"
+      className="w-full p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 bg-surface-muted rounded-lg"
     >
-      <p className="text-sm font-medium uppercase tracking-[0.15em] text-accent">
-        Written by
-      </p>
+      <div
+        aria-hidden="true"
+        className="w-14 h-14 shrink-0 flex items-center justify-center font-serif text-2xl text-accent bg-background rounded-full"
+      >
+        {initial}
+      </div>
 
-      <p className="font-serif text-2xl text-foreground">{name}</p>
+      <div className="flex flex-col gap-2">
+        <p className="text-sm font-medium uppercase tracking-[0.15em] text-accent">
+          Written by
+        </p>
 
-      <p className="text-pretty text-sm leading-6 text-muted">{bio}</p>
+        <p className="font-serif text-2xl text-foreground">{name}</p>
+
+        <p className="text-sm leading-6 text-pretty text-muted">{bio}</p>
+      </div>
     </aside>
   );
 }

@@ -18,43 +18,43 @@ export default function FeaturedBlog({ blog }: FeaturedBlogProps) {
   return (
     <section
       aria-label="Featured post"
-      className="w-full max-w-7xl mx-auto px-6 py-20 lg:px-8"
+      className="w-full max-w-7xl 2xl:max-w-360 px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20 mx-auto"
     >
-      <article className="relative w-full grid lg:grid-cols-2 bg-surface rounded-lg overflow-hidden shadow-sm transition-shadow duration-300 hover:shadow-md has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-accent has-[a:focus-visible]:ring-offset-2 group">
-        <div className="relative w-full min-h-80 lg:min-h-110 bg-surface-muted overflow-hidden">
+      <article className="w-full grid lg:grid-cols-2 bg-surface shadow-sm rounded-lg relative overflow-hidden transition-shadow duration-300 hover:shadow-md has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-accent has-[a:focus-visible]:ring-offset-2 group">
+        <div className="w-full min-h-64 sm:min-h-80 lg:min-h-110 xl:min-h-125 bg-surface-muted relative overflow-hidden">
           <Image
             src={blog.image}
             alt=""
             fill
-            sizes="(max-width: 1024px) 100vw, 50vw"
+            sizes="(min-width: 1024px) 50vw, 100vw"
             className="object-cover transition-transform duration-500 ease-out group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
           />
         </div>
 
-        <div className="flex flex-col justify-center gap-5 p-8 sm:p-10 lg:p-14">
+        <div className="p-6 sm:p-10 lg:p-12 xl:p-14 flex flex-col justify-center gap-5">
           <span className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
             Featured
           </span>
 
-          <h2 className="text-balance font-serif text-4xl sm:text-5xl leading-tight text-foreground transition-colors duration-200 group-hover:text-accent">
+          <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl leading-tight text-balance text-foreground transition-colors duration-200 group-hover:text-accent">
             <Link
               href={`/blogs/${blog.slug}`}
-              className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
+              className="focus-visible:outline-none after:absolute after:inset-0 after:content-['']"
             >
               {blog.title}
             </Link>
           </h2>
 
-          <p className="max-w-xl text-pretty text-base leading-7 text-muted">
+          <p className="max-w-xl text-base leading-7 text-pretty text-muted">
             {blog.excerpt}
           </p>
 
           {tags.length > 0 && (
-            <ul className="flex flex-wrap items-center gap-2 pt-1">
+            <ul className="pt-1 flex flex-wrap items-center gap-2">
               {tags.map((tag) => (
                 <li
                   key={tag}
-                  className="px-3 py-1.5 bg-surface-muted rounded-full text-xs text-muted"
+                  className="px-3 py-1.5 text-xs text-muted bg-surface-muted rounded-full"
                 >
                   {tag}
                 </li>
@@ -62,7 +62,7 @@ export default function FeaturedBlog({ blog }: FeaturedBlogProps) {
             </ul>
           )}
 
-          <div className="flex items-center justify-between pt-3">
+          <div className="pt-3 flex items-center justify-between gap-4">
             <div className="flex items-center gap-2 text-sm text-muted">
               <time dateTime={date.iso}>{date.label}</time>
               <span aria-hidden="true">•</span>
@@ -71,7 +71,7 @@ export default function FeaturedBlog({ blog }: FeaturedBlogProps) {
 
             <span
               aria-hidden="true"
-              className="w-10 h-10 flex items-center justify-center bg-surface-muted rounded-lg text-foreground transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transition-none"
+              className="w-10 h-10 shrink-0 flex items-center justify-center text-foreground bg-surface-muted rounded-lg transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transition-none"
             >
               <ArrowRightIcon className="w-5 h-5" />
             </span>

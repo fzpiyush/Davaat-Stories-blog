@@ -6,6 +6,8 @@ import type { Blog } from "@/lib/blog/mockBlogs";
 
 import AuthorCard from "./AuthorCard";
 import BlogMeta from "./BlogsMeta";
+import RecommendedBlogs from "./RecommendedBlogs";
+import TableOfContents, { type TocItem } from "./TableOfContent";
 
 type BlogSection = Blog["content"][number];
 
@@ -14,13 +16,9 @@ type ArticleSection = BlogSection & {
   key: string;
 };
 
-type TocItem = {
-  id: string;
-  heading: string;
-};
-
 interface BlogArticleProps {
   blog: Blog;
+  recommendedBlogs?: Blog[];
 }
 
 function slugify(text: string): string {
@@ -57,21 +55,24 @@ function buildToc(sections: ArticleSection[]): TocItem[] {
   );
 }
 
-export default function BlogArticle({ blog }: BlogArticleProps) {
+export default function BlogArticle({
+  blog,
+  recommendedBlogs = [],
+}: BlogArticleProps) {
   const sections = buildSections(blog.content);
   const toc = buildToc(sections);
+  const hasToc = toc.length > 0;
   const hasTags = blog.tags.length > 0;
-  const hasAside = toc.length > 0 || hasTags;
+  const hasRecommended = recommendedBlogs.length > 0;
+  const hasAside = hasToc || hasTags || hasRecommended;
 
-  const bodyGridClass = [
-    "w-full max-w-7xl grid gap-12",
-    hasAside ? "lg:grid-cols-[minmax(0,1fr)_280px]" : "",
-    "mx-auto px-6 py-16 lg:px-8",
-  ].join(" ");
+  const bodyGridClass = hasAside
+    ? "w-full max-w-7xl 2xl:max-w-360 px-4 py-12 sm:px-6 sm:py-16 lg:px-8 mx-auto grid gap-12 lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-16 xl:grid-cols-[minmax(0,1fr)_320px]"
+    : "w-full max-w-7xl 2xl:max-w-360 px-4 py-12 sm:px-6 sm:py-16 lg:px-8 mx-auto grid gap-12";
 
   return (
     <article className="w-full">
-      <header className="w-full max-w-4xl flex flex-col gap-8 mx-auto px-6 pt-12 pb-12 sm:pt-16 lg:px-8">
+      <header className="w-full max-w-4xl 2xl:max-w-5xl px-4 py-10 sm:px-6 sm:pt-16 sm:pb-12 lg:px-8 mx-auto flex flex-col gap-6 sm:gap-8">
         <Link
           href="/blogs"
           className="w-fit inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-accent group"
@@ -83,16 +84,16 @@ export default function BlogArticle({ blog }: BlogArticleProps) {
           All posts
         </Link>
 
-        <div className="flex flex-col gap-6">
-          <span className="w-fit inline-flex px-3 py-1.5 bg-surface-muted rounded-full text-xs font-medium text-accent">
+        <div className="flex flex-col gap-5 sm:gap-6">
+          <span className="w-fit px-3 py-1.5 inline-flex text-xs font-medium text-accent bg-surface-muted rounded-full">
             {blog.category}
           </span>
 
-          <h1 className="text-balance font-serif text-4xl sm:text-6xl lg:text-7xl leading-[1.05] tracking-tight text-foreground">
+          <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl xl:text-7xl leading-[1.05] tracking-tight text-balance text-foreground">
             {blog.title}
           </h1>
 
-          <p className="max-w-3xl text-pretty text-lg sm:text-xl leading-8 text-muted">
+          <p className="max-w-3xl text-lg sm:text-xl leading-7 sm:leading-8 text-pretty text-muted">
             {blog.excerpt}
           </p>
         </div>
@@ -104,21 +105,21 @@ export default function BlogArticle({ blog }: BlogArticleProps) {
         />
       </header>
 
-      <div className="w-full max-w-7xl mx-auto px-6 lg:px-8">
-        <div className="relative w-full aspect-video sm:aspect-21/9 bg-surface-muted rounded-lg overflow-hidden">
+      <div className="w-full max-w-7xl 2xl:max-w-360 px-4 sm:px-6 lg:px-8 mx-auto">
+        <div className="w-full aspect-video sm:aspect-21/9 bg-surface-muted rounded-lg relative overflow-hidden">
           <Image
             src={blog.image}
             alt=""
             fill
             priority
-            sizes="(max-width: 1280px) 100vw, 1280px"
+            sizes="(min-width: 1536px) 1440px, (min-width: 1280px) 1280px, 100vw"
             className="object-cover"
           />
         </div>
       </div>
 
       <div className={bodyGridClass}>
-        <div className="w-full max-w-3xl flex flex-col gap-12 mx-auto">
+        <div className="w-full max-w-3xl mx-auto flex flex-col gap-10 sm:gap-12">
           {sections.map((section) => (
             <section
               key={section.key}
@@ -126,7 +127,7 @@ export default function BlogArticle({ blog }: BlogArticleProps) {
               className="flex flex-col gap-5 scroll-mt-24"
             >
               {section.heading && (
-                <h2 className="text-balance font-serif text-3xl sm:text-4xl leading-tight text-foreground">
+                <h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl leading-tight text-balance text-foreground">
                   {section.heading}
                 </h2>
               )}
@@ -134,15 +135,15 @@ export default function BlogArticle({ blog }: BlogArticleProps) {
               {section.paragraphs.map((paragraph, index) => (
                 <p
                   key={`${section.key}-p-${index}`}
-                  className="text-lg leading-8 text-muted"
+                  className="text-base sm:text-lg leading-7 sm:leading-8 text-muted"
                 >
                   {paragraph}
                 </p>
               ))}
 
               {section.quote && (
-                <blockquote className="p-6 bg-surface-muted border-l-4 border-accent rounded-r-lg">
-                  <p className="font-serif text-xl italic leading-8 text-foreground">
+                <blockquote className="p-5 sm:p-6 bg-surface-muted border-l-4 border-accent rounded-r-lg">
+                  <p className="font-serif text-lg sm:text-xl italic leading-8 text-foreground">
                     “{section.quote}”
                   </p>
                 </blockquote>
@@ -155,47 +156,22 @@ export default function BlogArticle({ blog }: BlogArticleProps) {
 
         {hasAside && (
           <aside
-            aria-label="About this post"
-            className="lg:sticky lg:top-8 w-full h-fit flex flex-col gap-8 p-6 bg-surface-muted rounded-lg"
+            aria-label="More about this post"
+            className="w-full h-fit lg:max-h-[calc(100vh-4rem)] flex flex-col gap-6 lg:sticky lg:top-8 lg:overflow-y-auto [scrollbar-width:thin]"
           >
-            {toc.length > 0 && (
-              <nav
-                aria-labelledby="toc-heading"
-                className="hidden lg:flex flex-col gap-4"
-              >
-                <h2
-                  id="toc-heading"
-                  className="text-xs font-medium uppercase tracking-[0.2em] text-accent"
-                >
-                  On this page
-                </h2>
-
-                <ul className="flex flex-col gap-2">
-                  {toc.map((item) => (
-                    <li key={item.id}>
-                      <Link
-                        href={`#${item.id}`}
-                        className="block text-sm leading-6 text-muted transition-colors hover:text-foreground"
-                      >
-                        {item.heading}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </nav>
-            )}
+            {hasToc && <TableOfContents items={toc} />}
 
             {hasTags && (
-              <div className="flex flex-col gap-5">
-                <h2 className="font-serif text-2xl text-foreground">
-                  About this post
+              <div className="w-full p-6 flex flex-col gap-4 bg-surface-muted rounded-lg">
+                <h2 className="text-xs font-medium uppercase tracking-[0.2em] text-accent">
+                  Topics
                 </h2>
 
                 <ul className="flex flex-wrap gap-2">
                   {blog.tags.map((tag) => (
                     <li
                       key={tag}
-                      className="px-3 py-1.5 bg-background rounded-full text-xs text-muted"
+                      className="px-3 py-1.5 text-xs text-muted bg-background rounded-full"
                     >
                       {tag}
                     </li>
@@ -203,6 +179,8 @@ export default function BlogArticle({ blog }: BlogArticleProps) {
                 </ul>
               </div>
             )}
+
+            {hasRecommended && <RecommendedBlogs blogs={recommendedBlogs} />}
           </aside>
         )}
       </div>

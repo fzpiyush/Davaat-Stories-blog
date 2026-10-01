@@ -27,7 +27,8 @@ export const blogs: Blog[] = [
       "Tools, habits, and small changes that help me stay productive and focused as a developer.",
     category: "Technology",
     tags: ["Technology", "Productivity", "Development", "Habits"],
-    image: "/images/blog/development-workflow.jpg",
+    image:
+      "https://plus.unsplash.com/premium_photo-1685086785636-2a1a0e5b591f?q=80&w=1932&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     publishedAt: "September 15, 2026",
     readTime: "5 min read",
     author: "Piyush Gupta",
@@ -80,7 +81,8 @@ export const blogs: Blog[] = [
       "A few thoughts on slowing down, simplifying, and being more present in everyday life.",
     category: "Life",
     tags: ["Life", "Mindset", "Reflection"],
-    image: "/images/blog/peace.jpg",
+    image:
+      "https://images.unsplash.com/photo-1490730141103-6cac27aaab94?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     publishedAt: "September 11, 2026",
     readTime: "4 min read",
     author: "Piyush Gupta",
@@ -110,7 +112,7 @@ export const blogs: Blog[] = [
       "A collection of ideas and lessons that have shaped the way I think and work.",
     category: "Ideas",
     tags: ["Ideas", "Learning", "Life"],
-    image: "/images/blog/lessons.jpg",
+    image: "https://images.unsplash.com/photo-1546410531-bb4caa6b424d?q=80&w=1471&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     publishedAt: "September 8, 2026",
     readTime: "6 min read",
     author: "Piyush Gupta",

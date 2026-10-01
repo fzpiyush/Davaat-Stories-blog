@@ -89,14 +89,14 @@ export default function ThemeToggle() {
       onClick={toggleTheme}
       aria-label={label}
       title={label}
-      className="border-line text-ink-muted hover:bg-sunken hover:text-ink focus-visible:outline-accent flex h-9 w-9 items-center justify-center rounded-lg border transition focus-visible:outline-2 focus-visible:outline-offset-2"
+      className="w-9 h-9 flex items-center justify-center text-muted border border-border rounded-lg transition hover:bg-surface-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >
       {!isClient ? (
-        <span className="h-5 w-5" />
+        <span className="w-5 h-5" />
       ) : theme === "dark" ? (
-        <SunIcon className="h-5 w-5" />
+        <SunIcon className="w-5 h-5" />
       ) : (
-        <MoonIcon className="h-5 w-5" />
+        <MoonIcon className="w-5 h-5" />
       )}
     </button>
   );

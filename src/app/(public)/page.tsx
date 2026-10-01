@@ -28,7 +28,7 @@ export default function HomePage() {
       ) : (
         <section
           aria-label="No posts yet"
-          className="w-full max-w-7xl mx-auto px-6 py-16 lg:px-8"
+          className="w-full max-w-7xl 2xl:max-w-360 px-4 py-12 sm:px-6 sm:py-16 lg:px-8 mx-auto"
         >
           <BlogEmptyState
             description="The first post is on its way. Subscribe below to get it the moment it's live."

@@ -8,35 +8,28 @@ export default function HomeHero() {
   return (
     <section
       aria-labelledby="home-hero-heading"
-      className="relative isolate bg-background border-b border-border overflow-hidden"
+      className="w-full bg-background border-b border-border relative isolate overflow-hidden"
     >
-      {/* Background image, bleeds to the right edge */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-y-0 right-0 -z-10 w-full lg:w-[62%]"
-      >
+      {/* Full width background image */}
+      <div aria-hidden="true" className="w-full absolute inset-0 -z-10">
         <Image
           src={heroImage}
           alt=""
           fill
           priority
-          placeholder="blur"
-          sizes="(min-width: 1024px) 62vw, 100vw"
+          sizes="100vw"
           className="object-cover object-[70%_center]"
         />
 
-        {/* Soft fade into the page on the left */}
-        <div className="absolute inset-0 bg-linear-to-r from-background via-background/40 to-transparent" />
+        {/* Frosted blur behind the text, fades out toward the right on desktop */}
+        <div className="w-full lg:w-[65%] bg-background/60 lg:bg-background/50 backdrop-blur-md absolute inset-y-0 left-0 lg:[mask-image:linear-gradient(to_right,black_60%,transparent)]" />
 
-        {/* Gentle fade at the bottom */}
-        <div className="absolute inset-x-0 bottom-0 h-32 bg-linear-to-t from-background to-transparent" />
-
-        {/* Keeps text readable on mobile where the image sits behind it */}
-        <div className="absolute inset-0 bg-background/70 lg:hidden" />
+        {/* Soft fade at the bottom so it blends into the next section */}
+        <div className="h-20 bg-linear-to-t from-background to-transparent absolute inset-x-0 bottom-0" />
       </div>
 
-      <div className="w-full max-w-7xl min-h-150 lg:min-h-170 flex items-center mx-auto px-6 py-24 lg:px-8">
-        <div className="max-w-xl flex flex-col gap-6">
+      <div className="w-full max-w-7xl 2xl:max-w-360 min-h-120 sm:min-h-140 lg:min-h-[min(calc(100svh-4rem),720px)] px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24 mx-auto flex items-center">
+        <div className="max-w-xl lg:max-w-lg xl:max-w-xl flex flex-col gap-5 sm:gap-6">
           <p className="flex items-center gap-3 text-xs font-medium uppercase tracking-[0.3em] text-accent">
             <span aria-hidden="true" className="w-8 h-px bg-accent" />
             Blog & Story
@@ -44,20 +37,20 @@ export default function HomeHero() {
 
           <h1
             id="home-hero-heading"
-            className="text-balance font-serif text-5xl sm:text-6xl lg:text-7xl leading-[1.05] tracking-tight text-foreground"
+            className="font-serif text-4xl sm:text-5xl lg:text-6xl xl:text-7xl leading-[1.08] tracking-tight text-balance text-foreground"
           >
             A space for curious minds and better days.
           </h1>
 
-          <p className="max-w-md text-pretty text-lg leading-8 text-muted">
+          <p className="max-w-md text-base sm:text-lg leading-7 sm:leading-8 text-pretty text-foreground/80">
             Thoughts, experiences, and stories about technology, life, and
             everything in between.
           </p>
 
-          <div className="flex flex-wrap items-center gap-x-8 gap-y-4 pt-4">
+          <div className="pt-2 sm:pt-4 flex flex-col sm:flex-row sm:items-center gap-3">
             <Link
               href="/blogs"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-accent rounded-full text-sm font-medium text-accent-foreground shadow-sm transition hover:shadow-md hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background group"
+              className="px-6 py-3 inline-flex items-center justify-center gap-2 text-sm font-medium text-accent-foreground bg-accent shadow-sm rounded-lg transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background group"
             >
               Read the latest
               <ArrowRightIcon
@@ -68,7 +61,7 @@ export default function HomeHero() {
 
             <Link
               href="/stories"
-              className="inline-flex items-center gap-2 text-sm font-medium text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:underline group"
+              className="px-6 py-3 inline-flex items-center justify-center gap-2 text-sm font-medium text-foreground bg-background/70 backdrop-blur-sm border border-border rounded-lg transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background group"
             >
               Explore stories
               <ArrowRightIcon

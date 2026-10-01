@@ -8,7 +8,7 @@ export default function AdminPageTitle() {
   const pathname = usePathname();
 
   return (
-    <p className="text-lg font-semibold text-foreground">
+    <p className="min-w-0 truncate text-base sm:text-lg font-semibold text-foreground">
       {getAdminPageTitle(pathname)}
     </p>
   );

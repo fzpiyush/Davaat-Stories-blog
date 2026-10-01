@@ -13,15 +13,15 @@ interface RelatedBlogCardProps {
 
 function RelatedBlogCard({ blog }: RelatedBlogCardProps) {
   return (
-    <article className="relative w-full h-full flex flex-col gap-3 p-6 bg-surface rounded-lg shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-accent motion-reduce:transition-none motion-reduce:hover:translate-y-0 group">
+    <article className="w-full h-full p-6 flex flex-col gap-3 bg-surface shadow-sm rounded-lg relative transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-accent motion-reduce:transition-none motion-reduce:hover:translate-y-0 group">
       <span className="text-xs font-medium uppercase tracking-[0.15em] text-accent">
         {blog.category}
       </span>
 
-      <h3 className="line-clamp-2 pt-1 font-serif text-2xl leading-tight text-foreground transition-colors duration-200 group-hover:text-accent">
+      <h3 className="pt-1 line-clamp-2 font-serif text-xl sm:text-2xl leading-tight text-foreground transition-colors duration-200 group-hover:text-accent">
         <Link
           href={`/blogs/${blog.slug}`}
-          className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
+          className="focus-visible:outline-none after:absolute after:inset-0 after:content-['']"
         >
           {blog.title}
         </Link>
@@ -33,7 +33,7 @@ function RelatedBlogCard({ blog }: RelatedBlogCardProps) {
 
       <span
         aria-hidden="true"
-        className="inline-flex items-center gap-1.5 mt-auto pt-3 text-sm font-medium text-accent"
+        className="mt-auto pt-3 inline-flex items-center gap-1.5 text-sm font-medium text-accent"
       >
         Read article
         <ArrowRightIcon className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1 motion-reduce:transition-none" />
@@ -50,7 +50,7 @@ export default function RelatedBlogs({ blogs }: RelatedBlogsProps) {
   return (
     <section
       aria-labelledby="related-blogs-heading"
-      className="w-full max-w-7xl grid gap-8 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end mx-auto px-6 py-16 lg:px-8"
+      className="w-full max-w-7xl 2xl:max-w-360 px-4 py-12 sm:px-6 sm:py-16 lg:px-8 mx-auto grid gap-8 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end"
     >
       <div className="flex flex-col gap-3">
         <p className="text-sm font-medium uppercase tracking-[0.2em] text-accent">
@@ -78,7 +78,7 @@ export default function RelatedBlogs({ blogs }: RelatedBlogsProps) {
 
       <ul
         role="list"
-        className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 sm:col-span-2"
+        className="grid gap-6 sm:col-span-2 md:grid-cols-2 lg:grid-cols-3 lg:gap-8"
       >
         {blogs.map((blog) => (
           <li key={blog.id} className="flex">

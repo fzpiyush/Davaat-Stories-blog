@@ -7,12 +7,12 @@ export default function PublicFooter() {
 
   return (
     <footer className="w-full border-t border-border">
-      <div className="w-full max-w-7xl flex flex-col gap-8 mx-auto px-6 py-10 lg:px-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-8">
+      <div className="w-full max-w-7xl 2xl:max-w-360 px-4 py-10 sm:px-6 lg:px-8 mx-auto flex flex-col gap-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 sm:gap-8">
           <div className="flex flex-col gap-2">
             <Link
               href="/"
-              className="w-fit rounded-sm font-serif text-2xl text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="w-fit font-serif text-2xl text-foreground rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               {SITE_NAME}
             </Link>
@@ -21,7 +21,7 @@ export default function PublicFooter() {
           </div>
 
           <nav aria-label="Footer">
-            <ul className="flex flex-wrap gap-6 text-sm text-muted">
+            <ul className="flex flex-wrap gap-x-6 gap-y-3 text-sm text-muted">
               {footerNav.map((item) => (
                 <li key={item.href}>
                   <Link
@@ -36,7 +36,7 @@ export default function PublicFooter() {
           </nav>
         </div>
 
-        <p className="pt-6 border-t border-border text-xs text-muted">
+        <p className="pt-6 text-xs text-muted border-t border-border">
           © {currentYear} {SITE_NAME}. All rights reserved.
         </p>
       </div>

@@ -21,8 +21,8 @@ export default function BlogEmptyState({
   action = { label: "Back home", href: "/" },
 }: BlogEmptyStateProps) {
   return (
-    <div className="w-full max-w-2xl flex flex-col items-center gap-4 mx-auto px-6 py-16 bg-surface-muted rounded-lg text-center">
-      <div className="w-12 h-12 flex items-center justify-center bg-background rounded-full text-accent">
+    <div className="w-full max-w-2xl px-6 py-12 sm:py-16 mx-auto flex flex-col items-center gap-4 text-center bg-surface-muted rounded-lg">
+      <div className="w-12 h-12 flex items-center justify-center text-accent bg-background rounded-full">
         <PencilSquareIcon aria-hidden="true" className="w-6 h-6" />
       </div>
 
@@ -30,11 +30,11 @@ export default function BlogEmptyState({
         {eyebrow}
       </p>
 
-      <h2 className="text-balance font-serif text-3xl text-foreground">
+      <h2 className="font-serif text-2xl sm:text-3xl text-balance text-foreground">
         {title}
       </h2>
 
-      <p className="max-w-md text-pretty text-sm leading-6 text-muted">
+      <p className="max-w-md text-sm leading-6 text-pretty text-muted">
         {description}
       </p>
 
@@ -42,7 +42,7 @@ export default function BlogEmptyState({
         <div className="pt-4">
           <Link
             href={action.href}
-            className="inline-flex items-center gap-2 px-5 py-3 bg-accent rounded-lg text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-muted group"
+            className="px-5 py-3 inline-flex items-center gap-2 text-sm font-medium text-accent-foreground bg-accent rounded-lg transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-muted group"
           >
             <ArrowLeftIcon
               aria-hidden="true"

@@ -13,7 +13,7 @@ const lora = Lora({
 });
 
 export const metadata: Metadata = {
-  title: "Dawad Imagine World",
+  title: "Davaat Imagine World",
   description: "A personal space for blogs and stories.",
 };
 

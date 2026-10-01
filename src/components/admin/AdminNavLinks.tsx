@@ -5,7 +5,11 @@ import { usePathname } from "next/navigation";
 
 import { adminNav, isAdminNavActive } from "@/lib/admin/navigation";
 
-export default function AdminNavLinks() {
+interface AdminNavLinksProps {
+  onNavigate?: () => void;
+}
+
+export default function AdminNavLinks({ onNavigate }: AdminNavLinksProps) {
   const pathname = usePathname();
 
   return (
@@ -17,8 +21,9 @@ export default function AdminNavLinks() {
           <li key={href}>
             <Link
               href={href}
+              onClick={onNavigate}
               aria-current={active ? "page" : undefined}
-              className="w-full flex items-center gap-3 p-3 rounded-lg text-sm font-medium text-muted transition-colors hover:bg-surface-muted hover:text-foreground aria-[current=page]:bg-surface-muted aria-[current=page]:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent group"
+              className="w-full p-3 flex items-center gap-3 text-sm font-medium text-muted rounded-lg transition-colors hover:bg-surface-muted hover:text-foreground aria-[current=page]:bg-surface-muted aria-[current=page]:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent group"
             >
               <Icon
                 aria-hidden="true"

@@ -3,13 +3,12 @@ import { notFound } from "next/navigation";
 
 import BlogArticle from "@/components/blog/BlogArticle";
 import BlogNavigation from "@/components/blog/BlogNavigation";
-import RelatedBlogs from "@/components/blog/RelatedBlogs";
 import type { Blog } from "@/lib/blog/mockBlogs";
 import { blogs, getBlogBySlug } from "@/lib/blog/mockBlogs";
 import { formatDate } from "@/lib/formatDate";
 
 const SITE_NAME = "DI World";
-const RELATED_LIMIT = 3;
+const RECOMMENDED_LIMIT = 3;
 
 type BlogParams = {
   slug: string;
@@ -31,7 +30,7 @@ function getAdjacentBlogs(index: number): AdjacentBlogs {
   };
 }
 
-function getRelatedBlogs(current: Blog, limit = RELATED_LIMIT): Blog[] {
+function getRecommendedBlogs(current: Blog, limit = RECOMMENDED_LIMIT): Blog[] {
   const others = blogs.filter((item) => item.id !== current.id);
 
   const related = others
@@ -109,17 +108,15 @@ export default async function BlogPage({ params }: BlogPageProps) {
   }
 
   const { previousBlog, nextBlog } = getAdjacentBlogs(blogIndex);
-  const relatedBlogs = getRelatedBlogs(blog);
+  const recommendedBlogs = getRecommendedBlogs(blog);
 
   return (
     <>
-      <BlogArticle blog={blog} />
+      <BlogArticle blog={blog} recommendedBlogs={recommendedBlogs} />
 
-      <div className="w-full max-w-7xl mx-auto px-6 lg:px-8">
+      <div className="w-full max-w-7xl 2xl:max-w-360 px-4 pb-12 sm:px-6 sm:pb-16 lg:px-8 mx-auto">
         <BlogNavigation previousBlog={previousBlog} nextBlog={nextBlog} />
       </div>
-
-      <RelatedBlogs blogs={relatedBlogs} />
     </>
   );
 }

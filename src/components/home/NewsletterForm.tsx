@@ -28,7 +28,10 @@ export default function NewsletterForm() {
         role="status"
         className="w-full max-w-xl flex items-center gap-2 text-sm font-medium text-foreground"
       >
-        <CheckCircleIcon aria-hidden="true" className="w-5 h-5 text-accent" />
+        <CheckCircleIcon
+          aria-hidden="true"
+          className="w-5 h-5 shrink-0 text-accent"
+        />
         {state.message}
       </p>
     );
@@ -51,13 +54,13 @@ export default function NewsletterForm() {
           disabled={isPending}
           aria-invalid={hasError}
           aria-describedby={hasError ? "newsletter-message" : undefined}
-          className="w-full min-w-0 h-12 flex-1 px-4 bg-background rounded-lg text-sm text-foreground ring-1 ring-border outline-none placeholder:text-muted focus:ring-2 focus:ring-accent aria-invalid:ring-red-600 disabled:opacity-60"
+          className="w-full min-w-0 h-12 px-4 flex-1 text-sm text-foreground bg-background rounded-lg ring-1 ring-border outline-none placeholder:text-muted focus:ring-2 focus:ring-accent aria-invalid:ring-red-600 disabled:opacity-60"
         />
 
         <button
           type="submit"
           disabled={isPending}
-          className="h-12 inline-flex items-center justify-center gap-2 px-6 bg-accent rounded-lg text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-muted disabled:opacity-60 disabled:cursor-not-allowed group"
+          className="w-full sm:w-auto h-12 px-6 inline-flex shrink-0 items-center justify-center gap-2 text-sm font-medium text-accent-foreground bg-accent rounded-lg transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-muted disabled:opacity-60 disabled:cursor-not-allowed group"
         >
           {isPending ? "Subscribing" : "Subscribe"}
           {!isPending && (
@@ -76,7 +79,10 @@ export default function NewsletterForm() {
       >
         {hasError && (
           <>
-            <ExclamationCircleIcon aria-hidden="true" className="w-4 h-4" />
+            <ExclamationCircleIcon
+              aria-hidden="true"
+              className="w-4 h-4 shrink-0"
+            />
             {state.message}
           </>
         )}

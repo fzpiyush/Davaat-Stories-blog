@@ -19,15 +19,15 @@ function Skeleton({ className, shape = "line" }: SkeletonProps) {
 
 function BlogCardSkeleton() {
   return (
-    <div className="w-full h-full flex flex-col bg-surface rounded-lg overflow-hidden shadow-sm">
+    <div className="w-full h-full flex flex-col bg-surface shadow-sm rounded-lg overflow-hidden">
       <Skeleton className="w-full aspect-16/10" shape="block" />
 
-      <div className="flex flex-1 flex-col gap-4 p-6">
+      <div className="p-5 sm:p-6 flex flex-1 flex-col gap-4">
         <Skeleton className="w-20 h-6" shape="pill" />
 
         <div className="flex flex-col gap-2">
-          <Skeleton className="w-full h-7" />
-          <Skeleton className="w-2/3 h-7" />
+          <Skeleton className="w-full h-6 sm:h-7" />
+          <Skeleton className="w-2/3 h-6 sm:h-7" />
         </div>
 
         <div className="flex flex-col gap-2">
@@ -36,7 +36,7 @@ function BlogCardSkeleton() {
           <Skeleton className="w-4/5 h-4" />
         </div>
 
-        <div className="flex items-center justify-between pt-4">
+        <div className="pt-4 flex items-center justify-between">
           <Skeleton className="w-32 h-3" />
           <Skeleton className="w-12 h-3" />
         </div>
@@ -49,7 +49,7 @@ export default function BlogsLoading() {
   return (
     <section
       aria-busy="true"
-      className="w-full max-w-7xl min-h-screen flex flex-col gap-12 sm:gap-16 mx-auto px-6 py-16 sm:py-20 lg:px-8 lg:py-24"
+      className="w-full max-w-7xl 2xl:max-w-360 min-h-screen px-4 py-12 sm:px-6 sm:py-20 lg:px-8 lg:py-24 mx-auto flex flex-col gap-12 sm:gap-16"
     >
       <p role="status" className="sr-only">
         Loading posts
@@ -67,7 +67,7 @@ export default function BlogsLoading() {
             <Skeleton className="w-3/4 h-10 sm:h-12 lg:h-14" />
           </div>
 
-          <div className="max-w-2xl flex flex-col gap-2 pt-1">
+          <div className="max-w-2xl pt-1 flex flex-col gap-2">
             <Skeleton className="w-full h-5" />
             <Skeleton className="w-2/3 h-5" />
           </div>

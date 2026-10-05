@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import AccountMenu from "@/components/public/AccountMenu";
 import MobileMenu from "@/components/public/MobileMenu";
 import NavLinks from "@/components/public/NavLinks";
 import ThemeToggle from "@/components/shared/ThemeToggle";
@@ -69,14 +70,17 @@ export default function PublicHeader() {
           />
         </Link>
 
-        <div className="flex items-center gap-3 md:gap-6">
+        <div className="flex items-center gap-2 sm:gap-3 md:gap-6">
+          <ThemeToggle />
+
           <nav aria-label="Main" className="hidden md:flex items-center">
             <NavLinks items={mainNav} />
           </nav>
 
-          <ThemeToggle />
-
-          <MobileMenu items={mainNav} />
+          <div className="flex items-center gap-2 sm:gap-3">
+            <MobileMenu items={mainNav} />
+            <AccountMenu />
+          </div>
         </div>
       </div>
     </header>

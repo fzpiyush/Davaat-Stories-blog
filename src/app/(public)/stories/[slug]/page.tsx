@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import PostEngagement from "@/components/engagement/PostEngagement";
 import StoryOverview from "@/components/story/StoryOverview";
 import { SITE_NAME } from "@/lib/site";
 import { getLiveChapters, getStoryBySlug } from "@/lib/story/queries";
@@ -63,5 +64,16 @@ export default async function StoryPage({ params }: StoryPageProps) {
 
   const chapters = await getLiveChapters(story.id);
 
-  return <StoryOverview story={story} chapters={chapters} />;
+  return (
+    <>
+      <StoryOverview story={story} chapters={chapters} />
+
+      <PostEngagement
+        kind="story"
+        targetId={story.id}
+        likeLabel={story.title}
+        prompt="Enjoying the story? Leave a like."
+      />
+    </>
+  );
 }

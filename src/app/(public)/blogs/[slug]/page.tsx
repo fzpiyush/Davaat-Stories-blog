@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 
 import BlogArticle from "@/components/blog/BlogArticle";
 import BlogNavigation from "@/components/blog/BlogNavigation";
+import PostEngagement from "@/components/engagement/PostEngagement";
+import ViewTracker from "@/components/engagement/ViewTracker";
 import {
   getAdjacentBlogs,
   getBlogBySlug,
@@ -85,6 +87,15 @@ export default async function BlogPage({ params }: BlogPageProps) {
   return (
     <>
       <BlogArticle blog={blog} recommendedBlogs={recommendedBlogs} />
+
+      <ViewTracker kind="blog" id={blog.id} />
+
+      <PostEngagement
+        kind="blog"
+        targetId={blog.id}
+        likeLabel="this post"
+        prompt="Enjoyed this post? Let me know."
+      />
 
       <div className="w-full max-w-3xl px-4 pb-16 sm:px-6 sm:pb-20 lg:px-0 mx-auto">
         <BlogNavigation previousBlog={previousBlog} nextBlog={nextBlog} />

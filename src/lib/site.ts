@@ -4,6 +4,7 @@ export type NavItem = {
 };
 
 export const SITE_NAME = "Davaat Imagine World";
+export const SITE_FULL_NAME = SITE_NAME;
 export const SITE_TAGLINE = "Thoughts. Blogs. Stories. A better you.";
 
 export const mainNav = [
@@ -16,5 +17,3 @@ export const footerNav = [
   ...mainNav,
   { label: "About", href: "/about" },
 ] as const satisfies readonly NavItem[];
-
-export const SITE_FULL_NAME = "Dawad Imagine World";

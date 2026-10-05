@@ -1,39 +1,71 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 import MobileMenu from "@/components/public/MobileMenu";
 import NavLinks from "@/components/public/NavLinks";
 import ThemeToggle from "@/components/shared/ThemeToggle";
 import { mainNav, SITE_NAME } from "@/lib/site";
 
-import logoLight from "@/assets/Dark_Logo.png";
-import logoDark from "@/assets/White_Logo.png";
+// Named by WHERE they're used, so they never get swapped again
+import logoForLightTheme from "@/assets/Dark_Logo.png";
+import logoForDarkTheme from "@/assets/White_Logo.png";
+
+const SCROLL_THRESHOLD = 24;
 
 export default function PublicHeader() {
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    let ticking = false;
+
+    const update = () => {
+      setIsScrolled(window.scrollY > SCROLL_THRESHOLD);
+      ticking = false;
+    };
+
+    // Runs at most once per frame instead of on every scroll event
+    const handleScroll = () => {
+      if (!ticking) {
+        ticking = true;
+        window.requestAnimationFrame(update);
+      }
+    };
+
+    update();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
-    <header className="w-full bg-background border-b border-border relative z-30">
+    <header
+      className={`fixed top-0 left-0 z-30 w-full h-16 border-b text-foreground transition-[background-color,border-color,box-shadow] duration-300 ${
+        isScrolled
+          ? "bg-background/95 border-border shadow-sm backdrop-blur-md"
+          : "bg-background/60 border-transparent backdrop-blur-sm"
+      }`}
+    >
       <div className="w-full max-w-7xl 2xl:max-w-360 h-16 px-4 sm:px-6 lg:px-8 mx-auto flex items-center justify-between gap-4 sm:gap-6">
         <Link
           href="/"
-          aria-label={SITE_NAME}
-          className="relative block h-10 w-40 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          aria-label={`${SITE_NAME} home`}
+          className="flex items-center shrink-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
+          {/* Logo follows the THEME only, never the scroll */}
           <Image
-            src={logoDark}
+            src={logoForDarkTheme}
             alt=""
-            fill
-            sizes="160px"
-            className="object-contain object-left block dark:hidden"
             priority
+            className="h-8 w-auto block dark:hidden"
           />
-
           <Image
-            src={logoLight}
+            src={logoForLightTheme}
             alt=""
-            fill
-            sizes="160px"
-            className="object-contain object-left hidden dark:block"
             priority
+            className="h-8 w-auto hidden dark:block"
           />
         </Link>
 

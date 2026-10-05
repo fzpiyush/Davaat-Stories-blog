@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 
 import {
+  OAUTH_NEXT_COOKIE,
   OAUTH_STATE_COOKIE,
   OAUTH_VERIFIER_COOKIE,
   SESSION_COOKIE,
@@ -13,7 +14,9 @@ import {
   exchangeCodeForAccessToken,
   fetchGoogleProfile,
 } from "@/lib/auth/google";
+import { isAdminPath, sanitizeNextPath } from "@/lib/auth/redirect";
 import { createSession, deleteExpiredSessions } from "@/lib/auth/session";
+import { ensureAuthorProfile } from "@/lib/db/authors";
 import { upsertGoogleUser } from "@/lib/db/users";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +33,7 @@ function safeEqual(a: string, b: string): boolean {
 function clearOAuthCookies(response: NextResponse): void {
   response.cookies.delete(OAUTH_STATE_COOKIE);
   response.cookies.delete(OAUTH_VERIFIER_COOKIE);
+  response.cookies.delete(OAUTH_NEXT_COOKIE);
 }
 
 function redirectToLogin(
@@ -61,6 +65,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const state = searchParams.get("state");
   const storedState = request.cookies.get(OAUTH_STATE_COOKIE)?.value;
   const codeVerifier = request.cookies.get(OAUTH_VERIFIER_COOKIE)?.value;
+  const nextPath = sanitizeNextPath(
+    request.cookies.get(OAUTH_NEXT_COOKIE)?.value,
+  );
 
   if (
     !code ||
@@ -75,21 +82,32 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const accessToken = await exchangeCodeForAccessToken(code, codeVerifier);
     const profile = await fetchGoogleProfile(accessToken);
-    const { adminEmails } = getAuthConfig();
-    const email = profile.email.trim().toLowerCase();
 
-    if (!profile.emailVerified || !adminEmails.has(email)) {
+    if (!profile.emailVerified) {
       return redirectToLogin(request, "not_allowed");
     }
 
-    const user = await upsertGoogleUser(profile);
+    const { adminEmails } = getAuthConfig();
+    const isAdmin = adminEmails.has(profile.email.trim().toLowerCase());
+    const user = await upsertGoogleUser(profile, isAdmin ? "admin" : "reader");
+
+    if (isAdmin) {
+      await ensureAuthorProfile(user).catch((authorError: unknown) => {
+        console.error("Author profile setup failed", authorError);
+      });
+    }
+
     const { token, expiresAt } = await createSession(user.id);
 
     await deleteExpiredSessions().catch((cleanupError: unknown) => {
       console.error("Expired session cleanup failed", cleanupError);
     });
 
-    const response = NextResponse.redirect(new URL("/admin", request.url));
+    // Readers who tried the admin login stay signed in as readers
+    const destination =
+      !isAdmin && isAdminPath(nextPath) ? "/login?error=not_allowed" : nextPath;
+
+    const response = NextResponse.redirect(new URL(destination, request.url));
     response.headers.set("Cache-Control", "no-store");
     response.cookies.set(
       SESSION_COOKIE,

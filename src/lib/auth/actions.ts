@@ -7,7 +7,7 @@ import { SESSION_COOKIE } from "@/lib/auth/cookies";
 import { getCurrentSession, invalidateSession } from "@/lib/auth/session";
 
 export async function signInWithGoogle(): Promise<void> {
-  redirect("/api/auth/google");
+  redirect("/api/auth/google?next=/admin");
 }
 
 export async function signOut(): Promise<void> {

@@ -79,20 +79,25 @@ export const getCurrentSession = cache(async (): Promise<SessionResult> => {
   return validateSessionToken(token);
 });
 
+export function isAdminUser(user: UserRow): boolean {
+  const { adminEmails } = getAuthConfig();
+
+  return user.role === "admin" && adminEmails.has(user.email);
+}
+
 export async function requireAdmin(): Promise<{
   session: SessionRow;
   user: UserRow;
 }> {
   const { session, user } = await getCurrentSession();
-  const { adminEmails } = getAuthConfig();
 
-  if (
-    !session ||
-    !user ||
-    user.role !== "admin" ||
-    !adminEmails.has(user.email)
-  ) {
+  if (!session || !user) {
     redirect("/login");
+  }
+
+  // Signed in readers get a clear message instead of a loop
+  if (!isAdminUser(user)) {
+    redirect("/login?error=not_allowed");
   }
 
   return { session, user };

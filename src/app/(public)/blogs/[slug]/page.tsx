@@ -114,7 +114,7 @@ export default async function BlogPage({ params }: BlogPageProps) {
     <>
       <BlogArticle blog={blog} recommendedBlogs={recommendedBlogs} />
 
-      <div className="w-full max-w-7xl 2xl:max-w-360 px-4 pb-12 sm:px-6 sm:pb-16 lg:px-8 mx-auto">
+      <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 lg:px-0 pb-16 sm:pb-20">
         <BlogNavigation previousBlog={previousBlog} nextBlog={nextBlog} />
       </div>
     </>

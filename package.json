@@ -9,17 +9,19 @@
     "lint": "eslint",
     "db:migrate": "knex migrate:latest --knexfile knexfile.ts",
     "db:rollback": "knex migrate:rollback --knexfile knexfile.ts",
-    "db:make": "knex migrate:make --knexfile knexfile.ts --migrations-directory db/migrations -x ts"
+    "db:make": "knex migrate:make --knexfile knexfile.ts --migrations-directory db/migrations -x ts",
+    "db:seed": "knex seed:run --knexfile knexfile.ts"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
-    "google-auth-library": "^11.1.0",
+    "@supabase/supabase-js": "^2.117.2",
     "knex": "^3.3.0",
     "next": "16.3.4",
     "pg": "^8.23.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "server-only": "^0.0.1"
+    "server-only": "^0.0.1",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

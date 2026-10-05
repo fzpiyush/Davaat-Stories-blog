@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRightIcon } from "@heroicons/react/20/solid";
 
-import heroImage from "@/assets/HeroImage.png";
+import heroImage from "@/assets/Serene Lakeside Ink-Wash Retreat.png";
 
 export default function HomeHero() {
   return (
@@ -21,17 +21,35 @@ export default function HomeHero() {
           className="object-cover object-[70%_center]"
         />
 
-        {/* Frosted blur behind the text, fades out toward the right on desktop */}
-        <div className="w-full lg:w-[65%] bg-background/60 lg:bg-background/50 backdrop-blur-md absolute inset-y-0 left-0 lg:[mask-image:linear-gradient(to_right,black_60%,transparent)]" />
+        {/* Soft gradient for text readability */}
+        <div
+          className="
+            w-full
+            absolute
+            inset-0
+            bg-linear-to-b
+            from-background/95
+            via-background/75
+            to-transparent
+            lg:bg-linear-to-r
+            lg:from-background/95
+            lg:via-background/70
+            lg:via-45%
+            lg:to-transparent
+          "
+        />
 
-        {/* Soft fade at the bottom so it blends into the next section */}
-        <div className="h-20 bg-linear-to-t from-background to-transparent absolute inset-x-0 bottom-0" />
+        {/* Soft fade at the bottom */}
+        <div className="h-24 bg-linear-to-t from-background/95 to-transparent absolute inset-x-0 bottom-0" />
       </div>
 
       <div className="w-full max-w-7xl 2xl:max-w-360 min-h-120 sm:min-h-140 lg:min-h-[min(calc(100svh-4rem),720px)] px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24 mx-auto flex items-center">
         <div className="max-w-xl lg:max-w-lg xl:max-w-xl flex flex-col gap-5 sm:gap-6">
           <p className="flex items-center gap-3 text-xs font-medium uppercase tracking-[0.3em] text-accent">
-            <span aria-hidden="true" className="w-8 h-px bg-accent" />
+            <span
+              aria-hidden="true"
+              className="w-8 h-px bg-accent"
+            />
             Blog & Story
           </p>
 
@@ -53,6 +71,7 @@ export default function HomeHero() {
               className="px-6 py-3 inline-flex items-center justify-center gap-2 text-sm font-medium text-accent-foreground bg-accent shadow-sm rounded-lg transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background group"
             >
               Read the latest
+
               <ArrowRightIcon
                 aria-hidden="true"
                 className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1 motion-reduce:transition-none"
@@ -64,6 +83,7 @@ export default function HomeHero() {
               className="px-6 py-3 inline-flex items-center justify-center gap-2 text-sm font-medium text-foreground bg-background/70 backdrop-blur-sm border border-border rounded-lg transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background group"
             >
               Explore stories
+
               <ArrowRightIcon
                 aria-hidden="true"
                 className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1 motion-reduce:transition-none"

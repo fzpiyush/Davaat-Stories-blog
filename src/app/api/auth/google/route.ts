@@ -1,12 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import {
+  OAUTH_NEXT_COOKIE,
   OAUTH_STATE_COOKIE,
   OAUTH_VERIFIER_COOKIE,
   oauthCookieOptions,
 } from "@/lib/auth/cookies";
 import type { LoginErrorCode } from "@/lib/auth/errors";
 import { createGoogleAuthUrl, generateRandomString } from "@/lib/auth/google";
+import { sanitizeNextPath } from "@/lib/auth/redirect";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -26,6 +28,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const state = generateRandomString();
     const codeVerifier = generateRandomString();
     const authUrl = createGoogleAuthUrl(state, codeVerifier);
+    const nextPath = sanitizeNextPath(request.nextUrl.searchParams.get("next"));
 
     const response = NextResponse.redirect(authUrl);
     response.headers.set("Cache-Control", "no-store");
@@ -35,6 +38,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       codeVerifier,
       oauthCookieOptions,
     );
+    // Remembers where to send the person after Google
+    response.cookies.set(OAUTH_NEXT_COOKIE, nextPath, oauthCookieOptions);
 
     return response;
   } catch (error) {

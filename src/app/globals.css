@@ -3,33 +3,35 @@
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 :root {
-  --background: #ffffff;
-  --foreground: #2d2a26;
+  --background: #fdfcfa;
+  --foreground: #24211d;
 
-  --surface: #faf9f7;
-  --surface-muted: #f3f1ed;
+  --surface: #f8f5f1;
+  --surface-muted: #f0ebe4;
 
-  --muted: #6f6a63;
+  --muted: #5f5952;
 
-  --accent: #9a6b4f;
+  --accent: #8a5a3c;
+  --accent-hover: #74492f;
   --accent-foreground: #ffffff;
 
-  --border: #e7e2db;
+  --border: #e4ddd3;
 }
 
 [data-theme="dark"] {
-  --background: #212121;
-  --foreground: #ececec;
+  --background: #1c1b19;
+  --foreground: #eeeae4;
 
-  --surface: #2f2f2f;
-  --surface-muted: #383838;
+  --surface: #262421;
+  --surface-muted: #2f2c29;
 
-  --muted: #a9a9a9;
+  --muted: #b3aca3;
 
-  --accent: #c99a78;
-  --accent-foreground: #211b17;
+  --accent: #d4a582;
+  --accent-hover: #e0b694;
+  --accent-foreground: #1c1612;
 
-  --border: #454545;
+  --border: #3a3632;
 }
 
 @theme inline {
@@ -42,6 +44,7 @@
   --color-muted: var(--muted);
 
   --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
   --color-accent-foreground: var(--accent-foreground);
 
   --color-border: var(--border);
@@ -50,9 +53,18 @@
   --font-serif: var(--font-lora);
 }
 
+html {
+  color-scheme: light;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+
 body {
   min-height: 100%;
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-inter), sans-serif;
+  -webkit-font-smoothing: antialiased;
 }

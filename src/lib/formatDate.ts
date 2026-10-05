@@ -1,3 +1,20 @@
+const SITE_TIME_ZONE = "Asia/Kolkata";
+
+const labelFormat = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  timeZone: SITE_TIME_ZONE,
+});
+
+// en-CA formats dates as YYYY-MM-DD, which is what the time tag wants
+const isoFormat = new Intl.DateTimeFormat("en-CA", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  timeZone: SITE_TIME_ZONE,
+});
+
 export function formatDate(value: string) {
   const date = new Date(value);
 
@@ -6,12 +23,7 @@ export function formatDate(value: string) {
   }
 
   return {
-    label: date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      timeZone: "UTC",
-    }),
-    iso: date.toISOString().split("T")[0],
+    label: labelFormat.format(date),
+    iso: isoFormat.format(date),
   };
 }

@@ -6,15 +6,19 @@ import HomeHero from "@/components/home/HomeHero";
 import LatestBlogs from "@/components/home/LatestBlogs";
 import NewsletterSection from "@/components/home/NewsletterSection";
 import { getFeaturedBlog } from "@/lib/blog/queries";
+import { SITE_NAME } from "@/lib/site";
+
+// Refreshes every minute, so scheduled posts show up on time
+export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: "DI World",
+  title: SITE_NAME,
   description:
     "Thoughts, ideas, experiences, and lessons about technology, life, and everything in between.",
 };
 
-export default function HomePage() {
-  const featuredBlog = getFeaturedBlog();
+export default async function HomePage() {
+  const featuredBlog = await getFeaturedBlog();
 
   return (
     <>

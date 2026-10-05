@@ -12,11 +12,11 @@ interface LatestBlogsProps {
   limit?: number;
 }
 
-export default function LatestBlogs({
+export default async function LatestBlogs({
   excludeSlug,
   limit = DEFAULT_LIMIT,
 }: LatestBlogsProps) {
-  const latestBlogs = getLatestBlogs(limit, excludeSlug);
+  const latestBlogs = await getLatestBlogs(limit, excludeSlug);
 
   if (latestBlogs.length === 0) {
     return null;

@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeftIcon } from "@heroicons/react/20/solid";
 
-import type { Blog } from "@/lib/blog/mockBlogs";
+import type { Blog, BlogSummary } from "@/lib/blog/types";
 
 import AuthorCard from "./AuthorCard";
 import BlogMeta from "./BlogsMeta";
@@ -18,7 +18,7 @@ type ArticleSection = BlogSection & {
 
 interface BlogArticleProps {
   blog: Blog;
-  recommendedBlogs?: Blog[];
+  recommendedBlogs?: BlogSummary[];
 }
 
 function slugify(text: string): string {
@@ -151,7 +151,11 @@ export default function BlogArticle({
             </section>
           ))}
 
-          <AuthorCard name={blog.author} />
+          <AuthorCard
+            name={blog.author}
+            bio={blog.authorBio}
+            avatarUrl={blog.authorAvatarUrl}
+          />
         </div>
 
         {hasAside && (

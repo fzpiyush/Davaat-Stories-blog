@@ -3,12 +3,16 @@ import { notFound } from "next/navigation";
 
 import BlogArticle from "@/components/blog/BlogArticle";
 import BlogNavigation from "@/components/blog/BlogNavigation";
-import type { Blog } from "@/lib/blog/mockBlogs";
-import { blogs, getBlogBySlug } from "@/lib/blog/mockBlogs";
+import {
+  getAdjacentBlogs,
+  getBlogBySlug,
+  getRecommendedBlogs,
+} from "@/lib/blog/queries";
 import { formatDate } from "@/lib/formatDate";
+import { SITE_NAME } from "@/lib/site";
 
-const SITE_NAME = "DI World";
-const RECOMMENDED_LIMIT = 3;
+// Refreshes every minute, so edits and scheduled posts show up on time
+export const revalidate = 60;
 
 type BlogParams = {
   slug: string;
@@ -18,52 +22,19 @@ interface BlogPageProps {
   params: Promise<BlogParams>;
 }
 
-type AdjacentBlogs = {
-  previousBlog: Blog | undefined;
-  nextBlog: Blog | undefined;
-};
-
-function getAdjacentBlogs(index: number): AdjacentBlogs {
-  return {
-    previousBlog: index + 1 < blogs.length ? blogs[index + 1] : undefined,
-    nextBlog: index > 0 ? blogs[index - 1] : undefined,
-  };
-}
-
-function getRecommendedBlogs(current: Blog, limit = RECOMMENDED_LIMIT): Blog[] {
-  const others = blogs.filter((item) => item.id !== current.id);
-
-  const related = others
-    .map((item) => {
-      const sharedTags = item.tags.filter((tag) =>
-        current.tags.includes(tag),
-      ).length;
-      const categoryScore = item.category === current.category ? 2 : 0;
-
-      return { item, score: sharedTags + categoryScore };
-    })
-    .filter(({ score }) => score > 0)
-    .sort((a, b) => b.score - a.score)
-    .map(({ item }) => item);
-
-  if (related.length >= limit) {
-    return related.slice(0, limit);
-  }
-
-  const fillers = others.filter((item) => !related.includes(item));
-
-  return [...related, ...fillers].slice(0, limit);
-}
-
+/*
+ * An empty list means pages get built on their first visit,
+ * then cached. Builds stay fast and never need the database.
+ */
 export function generateStaticParams(): BlogParams[] {
-  return blogs.map((blog) => ({ slug: blog.slug }));
+  return [];
 }
 
 export async function generateMetadata({
   params,
 }: BlogPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const blog = getBlogBySlug(slug);
+  const blog = await getBlogBySlug(slug);
 
   if (!blog) {
     return {
@@ -100,21 +71,22 @@ export async function generateMetadata({
 
 export default async function BlogPage({ params }: BlogPageProps) {
   const { slug } = await params;
-  const blogIndex = blogs.findIndex((item) => item.slug === slug);
-  const blog = blogs[blogIndex];
+  const blog = await getBlogBySlug(slug);
 
   if (!blog) {
     notFound();
   }
 
-  const { previousBlog, nextBlog } = getAdjacentBlogs(blogIndex);
-  const recommendedBlogs = getRecommendedBlogs(blog);
+  const [{ previousBlog, nextBlog }, recommendedBlogs] = await Promise.all([
+    getAdjacentBlogs(blog),
+    getRecommendedBlogs(blog.id),
+  ]);
 
   return (
     <>
       <BlogArticle blog={blog} recommendedBlogs={recommendedBlogs} />
 
-      <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 lg:px-0 pb-16 sm:pb-20">
+      <div className="w-full max-w-3xl px-4 pb-16 sm:px-6 sm:pb-20 lg:px-0 mx-auto">
         <BlogNavigation previousBlog={previousBlog} nextBlog={nextBlog} />
       </div>
     </>

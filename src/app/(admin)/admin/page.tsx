@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { requireAdmin } from "@/lib/auth/session";
-import { blogs } from "@/lib/blog/mockBlogs";
+import { getDashboardCounts } from "@/lib/db/dashboard";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -9,25 +9,18 @@ export const metadata: Metadata = {
 
 type Stat = {
   label: string;
-  value: number | null;
+  value: number;
 };
 
 const numberFormat = new Intl.NumberFormat("en-US");
 
 function StatCard({ label, value }: Stat) {
   return (
-    <li className="flex flex-col gap-2 p-5 bg-surface border border-border rounded-xl">
+    <li className="p-5 flex flex-col gap-2 bg-surface border border-border rounded-xl">
       <p className="text-sm text-muted">{label}</p>
 
       <p className="text-2xl font-semibold text-foreground">
-        {value === null ? (
-          <>
-            <span aria-hidden="true">—</span>
-            <span className="sr-only">Not available yet</span>
-          </>
-        ) : (
-          numberFormat.format(value)
-        )}
+        {numberFormat.format(value)}
       </p>
     </li>
   );
@@ -36,11 +29,13 @@ function StatCard({ label, value }: Stat) {
 export default async function AdminDashboardPage() {
   await requireAdmin();
 
+  const counts = await getDashboardCounts();
+
   const stats: Stat[] = [
-    { label: "Blogs", value: blogs.length },
-    { label: "Stories", value: null },
-    { label: "Comments", value: null },
-    { label: "Views", value: null },
+    { label: "Blogs", value: counts.blogs },
+    { label: "Stories", value: counts.stories },
+    { label: "Comments", value: counts.comments },
+    { label: "Views", value: counts.views },
   ];
 
   return (

@@ -6,6 +6,22 @@ import { slugify } from "@/lib/utils/slugify";
 
 const AVATAR_SIZE = 512;
 
+export type AuthorProfile = {
+  author: AuthorRow;
+  avatar: { id: string; url: string; alt_text: string } | null;
+};
+
+export type AuthorProfileInput = {
+  name: string;
+  slug: string;
+  bio: string;
+  avatarMediaId: string | null;
+  websiteUrl: string | null;
+  instagramUrl: string | null;
+  xUrl: string | null;
+  linkedinUrl: string | null;
+};
+
 /* Google photo links end with a size like =s96-c, so we ask for a bigger one */
 function toLargeGooglePhoto(url: string): string {
   return url.replace(/=s\d+-c$/, `=s${AVATAR_SIZE}-c`);
@@ -13,6 +29,23 @@ function toLargeGooglePhoto(url: string): string {
 
 export async function getAuthor(): Promise<AuthorRow | undefined> {
   return db<AuthorRow>("authors").orderBy("created_at", "asc").first();
+}
+
+export async function getAuthorProfile(): Promise<AuthorProfile | undefined> {
+  const author = await getAuthor();
+
+  if (!author) {
+    return undefined;
+  }
+
+  const avatar = author.avatar_media_id
+    ? await db("media")
+        .select("id", "url", "alt_text")
+        .where({ id: author.avatar_media_id })
+        .first()
+    : null;
+
+  return { author, avatar: avatar ?? null };
 }
 
 /*
@@ -54,4 +87,29 @@ export async function ensureAuthorProfile(user: UserRow): Promise<AuthorRow> {
 
     return author;
   });
+}
+
+export async function saveAuthorProfile(
+  input: AuthorProfileInput,
+): Promise<void> {
+  const row = {
+    name: input.name,
+    slug: input.slug,
+    bio: input.bio,
+    avatar_media_id: input.avatarMediaId,
+    website_url: input.websiteUrl,
+    instagram_url: input.instagramUrl,
+    x_url: input.xUrl,
+    linkedin_url: input.linkedinUrl,
+    updated_at: new Date(),
+  };
+
+  const existing = await getAuthor();
+
+  if (existing) {
+    await db("authors").where({ id: existing.id }).update(row);
+    return;
+  }
+
+  await db("authors").insert(row);
 }

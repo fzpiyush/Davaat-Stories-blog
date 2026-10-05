@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRightIcon } from "@heroicons/react/20/solid";
 
-import heroImage from "@/assets/Serene Lakeside Ink-Wash Retreat.png";
+import heroImage from "@/assets/HeroImage.png";
 
 export default function HomeHero() {
   return (

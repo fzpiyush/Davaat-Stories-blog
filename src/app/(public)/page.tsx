@@ -5,10 +5,11 @@ import FeaturedBlog from "@/components/home/FeaturedBlog";
 import HomeHero from "@/components/home/HomeHero";
 import LatestBlogs from "@/components/home/LatestBlogs";
 import NewsletterSection from "@/components/home/NewsletterSection";
+import StoriesSection from "@/components/home/StoriesSection";
 import { getFeaturedBlog } from "@/lib/blog/queries";
 import { SITE_NAME } from "@/lib/site";
 
-// Refreshes every minute, so scheduled posts show up on time
+// Refreshes every minute, so scheduled posts and chapters show up on time
 export const revalidate = 60;
 
 export const metadata: Metadata = {
@@ -40,6 +41,8 @@ export default async function HomePage() {
           />
         </section>
       )}
+
+      <StoriesSection />
 
       <NewsletterSection />
     </>

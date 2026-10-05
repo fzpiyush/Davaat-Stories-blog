@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowLeftIcon, ArrowRightIcon } from "@heroicons/react/20/solid";
 
-import type { Blog } from "@/lib/blog/mockBlogs";
+import type { BlogSummary as Blog } from "@/lib/blog/types";
 
 type Direction = "previous" | "next";
 

@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import type { Blog } from "@/lib/blog/mockBlogs";
+import type { BlogSummary as Blog } from "@/lib/blog/types";
 
 interface RecommendedBlogsProps {
   blogs: Blog[];

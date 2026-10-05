@@ -1,6 +1,6 @@
 import type { Knex } from "knex";
 
-import { blogs as mockBlogs } from "../../src/lib/blog/mockBlogs";
+import { blogs as mockBlogs } from "./data/mockBlogs";
 
 type MockBlog = (typeof mockBlogs)[number];
 

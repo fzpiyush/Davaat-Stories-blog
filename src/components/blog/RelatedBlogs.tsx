@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRightIcon } from "@heroicons/react/20/solid";
 
-import type { Blog } from "@/lib/blog/mockBlogs";
+import type { BlogSummary as Blog } from "@/lib/blog/types";
 
 interface RelatedBlogsProps {
   blogs: Blog[];

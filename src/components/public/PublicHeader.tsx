@@ -45,8 +45,8 @@ export default function PublicHeader() {
     <header
       className={`fixed top-0 left-0 z-30 w-full h-16 border-b text-foreground transition-[background-color,border-color,box-shadow] duration-300 ${
         isScrolled
-          ? "bg-background/95 border-border shadow-sm backdrop-blur-md"
-          : "bg-background/60 border-transparent backdrop-blur-sm"
+          ? "bg-background/90 border-border shadow-sm backdrop-blur-md"
+          : "bg-wash/40 border-transparent backdrop-blur-md"
       }`}
     >
       <div className="w-full max-w-7xl 2xl:max-w-360 h-16 px-4 sm:px-6 lg:px-8 mx-auto flex items-center justify-between gap-4 sm:gap-6">

@@ -38,10 +38,6 @@ export default async function ProfilePage() {
                 alt: profile.avatar.alt_text,
               }
             : null,
-          websiteUrl: author?.website_url ?? "",
-          instagramUrl: author?.instagram_url ?? "",
-          xUrl: author?.x_url ?? "",
-          linkedinUrl: author?.linkedin_url ?? "",
         }}
       />
     </section>

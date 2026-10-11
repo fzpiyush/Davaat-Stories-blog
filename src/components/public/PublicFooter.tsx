@@ -1,28 +1,14 @@
 import Link from "next/link";
-import type { IconType } from "react-icons";
 import { ArrowUpIcon } from "@heroicons/react/20/solid";
-import {
-  FaFacebookF,
-  FaInstagram,
-  FaXTwitter,
-  FaYoutube,
-} from "react-icons/fa6";
 
+import { socialIcons } from "@/components/shared/socialIcons";
 import {
   footerNav,
   SITE_DESCRIPTION,
   SITE_NAME,
   SITE_TAGLINE,
-  socialLinks,
-  type SocialPlatform,
 } from "@/lib/site";
-
-const socialIcons: Record<SocialPlatform, IconType> = {
-  facebook: FaFacebookF,
-  instagram: FaInstagram,
-  x: FaXTwitter,
-  youtube: FaYoutube,
-};
+import { getSocialLinks } from "@/lib/social/queries";
 
 const stayInTouch = [
   { label: "Newsletter", href: "/#newsletter-heading" },
@@ -36,9 +22,9 @@ const linkClass =
 const headingClass =
   "text-xs font-medium uppercase tracking-[0.2em] text-foreground";
 
-export default function PublicFooter() {
+export default async function PublicFooter() {
   const currentYear = new Date().getFullYear();
-  const activeSocials = socialLinks.filter((link) => link.href);
+  const socials = await getSocialLinks();
 
   return (
     <footer className="w-full bg-surface border-t border-border">
@@ -60,22 +46,22 @@ export default function PublicFooter() {
               {SITE_DESCRIPTION}
             </p>
 
-            {activeSocials.length > 0 && (
+            {socials.length > 0 && (
               <ul
                 aria-label="Follow along"
                 className="pt-2 flex flex-wrap items-center gap-2"
               >
-                {activeSocials.map(({ platform, label, href }) => {
-                  const Icon = socialIcons[platform];
+                {socials.map((link) => {
+                  const Icon = socialIcons[link.platform];
 
                   return (
-                    <li key={platform}>
+                    <li key={link.id}>
                       <a
-                        href={href}
+                        href={link.href}
                         target="_blank"
                         rel="noopener noreferrer"
-                        title={label}
-                        aria-label={`${label}, opens in a new tab`}
+                        title={link.label}
+                        aria-label={`${link.label}, opens in a new tab`}
                         className="w-10 h-10 flex items-center justify-center text-muted bg-background border border-border rounded-full transition-colors hover:text-accent-foreground hover:bg-accent hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                       >
                         <Icon aria-hidden="true" className="w-4 h-4" />

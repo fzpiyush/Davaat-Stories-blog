@@ -107,14 +107,20 @@ export default function BlogArticle({
 
       <div className="w-full max-w-7xl 2xl:max-w-360 px-4 sm:px-6 lg:px-8 mx-auto">
         <div className="w-full aspect-video sm:aspect-21/9 bg-surface-muted rounded-lg relative overflow-hidden">
-          <Image
-            src={blog.image}
-            alt=""
-            fill
-            priority
-            sizes="(min-width: 1536px) 1440px, (min-width: 1280px) 1280px, 100vw"
-            className="object-cover"
-          />
+          {blog.image ? (
+            <Image
+              src={blog.image}
+              alt=""
+              fill
+              priority
+              sizes="(min-width: 1536px) 1440px, (min-width: 1280px) 1280px, 100vw"
+              className="object-cover"
+            />
+          ) : (
+            <div className="flex items-center justify-center text-sm text-muted absolute inset-0">
+              No cover yet
+            </div>
+          )}
         </div>
       </div>
 

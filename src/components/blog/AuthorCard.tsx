@@ -1,4 +1,6 @@
 import Image from "next/image";
+import Link from "next/link";
+import { ArrowRightIcon } from "@heroicons/react/20/solid";
 
 const DEFAULT_BIO =
   "Writing about technology, life, ideas, and the lessons I learn along the way.";
@@ -49,6 +51,17 @@ export default function AuthorCard({
         <p className="font-serif text-2xl text-foreground">{name}</p>
 
         <p className="text-sm leading-6 text-pretty text-muted">{text}</p>
+
+        <Link
+          href="/about"
+          className="w-fit inline-flex items-center gap-1.5 text-sm font-medium text-accent rounded-lg transition-colors hover:text-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent group"
+        >
+          More about me
+          <ArrowRightIcon
+            aria-hidden="true"
+            className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1 motion-reduce:transition-none"
+          />
+        </Link>
       </div>
     </aside>
   );

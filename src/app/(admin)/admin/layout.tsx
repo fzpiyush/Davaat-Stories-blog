@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import AdminHeader from "@/components/admin/AdminHeader";
 import AdminSidebar from "@/components/admin/AdminSidebar";
+import { ToastProvider } from "@/components/admin/ui/Toaster";
 import { requireAdmin } from "@/lib/auth/session";
 
 export const metadata: Metadata = {
@@ -23,14 +24,16 @@ export default async function AdminLayout({
   const { user } = await requireAdmin();
 
   return (
-    <div className="w-full min-h-screen flex bg-background text-foreground">
-      <AdminSidebar />
+    <ToastProvider>
+      <div className="w-full min-h-screen flex bg-background text-foreground">
+        <AdminSidebar />
 
-      <div className="min-w-0 flex flex-1 flex-col">
-        <AdminHeader userName={user.name ?? user.email} />
+        <div className="min-w-0 flex flex-1 flex-col">
+          <AdminHeader userName={user.name ?? user.email} />
 
-        <main className="w-full flex-1 p-6 lg:p-8">{children}</main>
+          <main className="w-full flex-1 p-6 lg:p-8">{children}</main>
+        </div>
       </div>
-    </div>
+    </ToastProvider>
   );
 }

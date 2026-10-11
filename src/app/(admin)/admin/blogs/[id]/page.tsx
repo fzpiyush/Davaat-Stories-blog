@@ -16,6 +16,7 @@ import { firstParam } from "@/lib/admin/params";
 import { buttonClass } from "@/lib/admin/ui";
 import { requireAdmin } from "@/lib/auth/session";
 import { getDisplayStatus } from "@/lib/content/status";
+import { getAuthorProfile } from "@/lib/db/authors";
 import { getBlogForEditor, listBlogOptions } from "@/lib/db/blogs";
 import { listCategoryOptions, listTagNames } from "@/lib/db/options";
 import { idSchema } from "@/lib/validation/shared";
@@ -41,13 +42,14 @@ export default async function EditBlogPage({
     notFound();
   }
 
-  const [record, categories, tagSuggestions, blogRows, search] =
+  const [record, categories, tagSuggestions, blogRows, search, profile] =
     await Promise.all([
       getBlogForEditor(id),
       listCategoryOptions(),
       listTagNames(),
       listBlogOptions(id),
       searchParams,
+      getAuthorProfile(),
     ]);
 
   if (!record) {
@@ -114,6 +116,11 @@ export default async function EditBlogPage({
           toContentOption(row.id, row.title, row.status, row.published_at),
         )}
         isNew={false}
+        previewAuthor={{
+          name: profile?.author.name ?? "The author",
+          bio: profile?.author.bio ?? "",
+          avatarUrl: profile?.avatar?.url ?? null,
+        }}
       />
 
       <DangerZone

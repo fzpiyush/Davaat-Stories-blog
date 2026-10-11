@@ -16,10 +16,6 @@ export type AuthorProfileInput = {
   slug: string;
   bio: string;
   avatarMediaId: string | null;
-  websiteUrl: string | null;
-  instagramUrl: string | null;
-  xUrl: string | null;
-  linkedinUrl: string | null;
 };
 
 /* Google photo links end with a size like =s96-c, so we ask for a bigger one */
@@ -97,10 +93,6 @@ export async function saveAuthorProfile(
     slug: input.slug,
     bio: input.bio,
     avatar_media_id: input.avatarMediaId,
-    website_url: input.websiteUrl,
-    instagram_url: input.instagramUrl,
-    x_url: input.xUrl,
-    linkedin_url: input.linkedinUrl,
     updated_at: new Date(),
   };
 

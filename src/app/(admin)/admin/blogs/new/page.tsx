@@ -8,6 +8,7 @@ import BackLink from "@/components/admin/ui/BackLink";
 import { saveBlog } from "@/lib/admin/blogs/actions";
 import { EMPTY_SECTION, toContentOption } from "@/lib/admin/editor";
 import { requireAdmin } from "@/lib/auth/session";
+import { getAuthorProfile } from "@/lib/db/authors";
 import { listBlogOptions } from "@/lib/db/blogs";
 import { listCategoryOptions, listTagNames } from "@/lib/db/options";
 
@@ -32,10 +33,11 @@ const NEW_BLOG: BlogEditorInitial = {
 export default async function NewBlogPage() {
   await requireAdmin();
 
-  const [categories, tagSuggestions, blogRows] = await Promise.all([
+  const [categories, tagSuggestions, blogRows, profile] = await Promise.all([
     listCategoryOptions(),
     listTagNames(),
     listBlogOptions(),
+    getAuthorProfile(),
   ]);
 
   return (
@@ -56,6 +58,11 @@ export default async function NewBlogPage() {
           toContentOption(row.id, row.title, row.status, row.published_at),
         )}
         isNew
+        previewAuthor={{
+          name: profile?.author.name ?? "The author",
+          bio: profile?.author.bio ?? "",
+          avatarUrl: profile?.avatar?.url ?? null,
+        }}
       />
     </section>
   );

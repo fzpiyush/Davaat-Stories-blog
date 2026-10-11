@@ -4,6 +4,8 @@ import {
   DocumentTextIcon,
   EnvelopeIcon,
   FolderIcon,
+  IdentificationIcon,
+  LinkIcon,
   PhotoIcon,
   Squares2X2Icon,
   TagIcon,
@@ -28,6 +30,8 @@ export const adminNav = [
   { label: "Readers", href: "/admin/readers", Icon: UsersIcon },
   { label: "Subscribers", href: "/admin/subscribers", Icon: EnvelopeIcon },
   { label: "Profile", href: "/admin/profile", Icon: UserCircleIcon },
+  { label: "About page", href: "/admin/about", Icon: IdentificationIcon },
+  { label: "Social links", href: "/admin/social", Icon: LinkIcon },
 ] as const satisfies readonly AdminNavItem[];
 
 export function isAdminNavActive(pathname: string, href: string): boolean {

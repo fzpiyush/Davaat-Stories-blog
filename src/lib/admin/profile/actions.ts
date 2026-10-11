@@ -17,16 +17,7 @@ import { validationErrorState } from "@/lib/validation/shared";
 
 const FIX_FIELDS = "Please fix the highlighted fields.";
 
-const FIELDS = [
-  "name",
-  "slug",
-  "bio",
-  "avatarMediaId",
-  "websiteUrl",
-  "instagramUrl",
-  "xUrl",
-  "linkedinUrl",
-] as const;
+const FIELDS = ["name", "slug", "bio", "avatarMediaId"] as const;
 
 export async function saveProfile(
   _prevState: ActionState,
@@ -53,10 +44,6 @@ export async function saveProfile(
       slug: slug.value,
       bio: form.bio,
       avatarMediaId: form.avatarMediaId,
-      websiteUrl: form.websiteUrl,
-      instagramUrl: form.instagramUrl,
-      xUrl: form.xUrl,
-      linkedinUrl: form.linkedinUrl,
     });
   } catch (error) {
     if (isUniqueViolation(error)) {

@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useId, useState } from "react";
+import { ArrowRightIcon } from "@heroicons/react/20/solid";
 
 import CoverPicker from "@/components/admin/fields/CoverPicker";
 import FormField from "@/components/admin/ui/FormField";
@@ -9,7 +11,12 @@ import SaveButton from "@/components/admin/ui/SaveButton";
 import type { ActionState } from "@/lib/admin/actionState";
 import type { CoverValue } from "@/lib/admin/editor";
 import { getFieldA11y } from "@/lib/admin/forms";
-import { cardClass, inputClass, textareaClass } from "@/lib/admin/ui";
+import {
+  buttonClass,
+  cardClass,
+  inputClass,
+  textareaClass,
+} from "@/lib/admin/ui";
 import { useEditorForm } from "@/lib/admin/useEditorForm";
 import { PROFILE_LIMITS } from "@/lib/validation/profile";
 
@@ -18,26 +25,7 @@ export type ProfileEditorInitial = {
   slug: string;
   bio: string;
   avatar: CoverValue;
-  websiteUrl: string;
-  instagramUrl: string;
-  xUrl: string;
-  linkedinUrl: string;
 };
-
-const SOCIAL_FIELDS = [
-  { name: "websiteUrl", label: "Website", placeholder: "https://yoursite.com" },
-  {
-    name: "instagramUrl",
-    label: "Instagram",
-    placeholder: "https://instagram.com/yourname",
-  },
-  { name: "xUrl", label: "X", placeholder: "https://x.com/yourname" },
-  {
-    name: "linkedinUrl",
-    label: "LinkedIn",
-    placeholder: "https://linkedin.com/in/yourname",
-  },
-] as const;
 
 interface ProfileEditorProps {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>;
@@ -55,7 +43,7 @@ export default function ProfileEditor({ action, initial }: ProfileEditorProps) {
   const nameId = `${id}-name`;
   const slugId = `${id}-slug`;
   const bioId = `${id}-bio`;
-  const slugHint = "Used for your author page link, which comes later.";
+  const slugHint = "Kept for later. Your public page lives at /about.";
   const bioHint = `${bio.length}/${PROFILE_LIMITS.bio}. Shows in the Written by card under every post.`;
 
   return (
@@ -115,32 +103,16 @@ export default function ProfileEditor({ action, initial }: ProfileEditorProps) {
         <div className={cardClass}>
           <h2 className="text-lg font-semibold text-foreground">Links</h2>
 
-          <div className="grid gap-5 md:grid-cols-2">
-            {SOCIAL_FIELDS.map((field) => {
-              const fieldId = `${id}-${field.name}`;
-              const fieldErrors = errors[field.name];
+          <p className="text-sm leading-6 text-muted">
+            Your social links have their own page now. They show in the site
+            footer and on your About page.
+          </p>
 
-              return (
-                <FormField
-                  key={field.name}
-                  id={fieldId}
-                  label={field.label}
-                  errors={fieldErrors}
-                  optional
-                >
-                  <input
-                    {...getFieldA11y(fieldId, fieldErrors)}
-                    name={field.name}
-                    type="url"
-                    inputMode="url"
-                    maxLength={500}
-                    defaultValue={initial[field.name]}
-                    placeholder={field.placeholder}
-                    className={inputClass}
-                  />
-                </FormField>
-              );
-            })}
+          <div>
+            <Link href="/admin/social" className={buttonClass.secondary}>
+              Manage social links
+              <ArrowRightIcon aria-hidden="true" className="w-4 h-4" />
+            </Link>
           </div>
         </div>
       </div>

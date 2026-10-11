@@ -2,6 +2,15 @@ export type UserRole = "admin" | "reader";
 export type ContentStatus = "draft" | "published" | "scheduled";
 export type StoryProgress = "ongoing" | "completed" | "hiatus";
 export type SubscriberStatus = "subscribed" | "unsubscribed";
+export type SocialPlatform =
+  | "instagram"
+  | "x"
+  | "facebook"
+  | "youtube"
+  | "linkedin"
+  | "threads"
+  | "whatsapp"
+  | "website";
 
 export interface BlogSection {
   heading?: string;
@@ -54,10 +63,24 @@ export interface AuthorRow extends Timestamps {
   slug: string;
   bio: string;
   avatar_media_id: string | null;
-  website_url: string | null;
-  instagram_url: string | null;
-  x_url: string | null;
-  linkedin_url: string | null;
+}
+
+export interface SocialLinkRow extends Timestamps {
+  id: string;
+  platform: SocialPlatform;
+  url: string;
+  position: number;
+}
+
+/* A single row, id is always 1 */
+export interface AboutPageRow {
+  id: number;
+  headline: string;
+  intro: string;
+  sections: BlogSection[];
+  banner_media_id: string | null;
+  show_latest: boolean;
+  updated_at: Date;
 }
 
 export interface CategoryRow extends Timestamps {

@@ -8,7 +8,7 @@ import {
 } from "@heroicons/react/20/solid";
 import { LockClosedIcon } from "@heroicons/react/24/outline";
 
-import heroImage from "@/assets/HeroImage.png";
+import heroImage from "@/assets/Hero_davaat.png";
 import GoogleSignInButton from "@/components/admin/GoogleSignInButton";
 import { signInWithGoogle } from "@/lib/auth/actions";
 import { getLoginErrorMessage } from "@/lib/auth/errors";

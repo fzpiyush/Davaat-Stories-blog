@@ -14,6 +14,8 @@ export interface BlogSummary {
   publishedAt: string;
   readTime: string;
   author: string;
+  /* Optional, so the editor preview can build a post without it */
+  viewCount?: number;
 }
 
 /* The full post for the blog page */

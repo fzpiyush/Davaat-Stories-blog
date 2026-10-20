@@ -61,9 +61,14 @@ export default function AboutEditor({ action, initial }: AboutEditorProps) {
     [sections],
   );
 
-  const readTimeMinutes = useMemo(
-    () => getReadTimeMinutes(countSectionWords(toBlogSections(sections))),
+  const wordCount = useMemo(
+    () => countSectionWords(toBlogSections(sections)),
     [sections],
+  );
+
+  const readTimeMinutes = useMemo(
+    () => getReadTimeMinutes(wordCount),
+    [wordCount],
   );
 
   return (
@@ -120,6 +125,7 @@ export default function AboutEditor({ action, initial }: AboutEditorProps) {
             setSections(next);
             markDirty();
           }}
+          wordCount={wordCount}
           readTimeMinutes={readTimeMinutes}
           errors={errors.sections}
         />

@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 
 import { formatRelative } from "@/lib/comments/format";
+import { textLang } from "@/lib/content/script";
 import type { ActionResult, PublicComment } from "@/lib/engagement/types";
 
 import CommentForm from "./CommentForm";
@@ -11,7 +12,19 @@ import CommentForm from "./CommentForm";
 type Mode = "view" | "edit" | "reply";
 
 const actionClass =
-  "text-xs font-medium text-muted rounded-sm transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60";
+  "px-2.5 py-1 text-xs font-medium text-muted rounded-lg transition-colors hover:bg-surface-muted hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60";
+
+/* First whole letter of a name, so Hindi letters keep their marks */
+function firstLetter(name: string): string {
+  const letters = Array.from(
+    new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(
+      name.trim(),
+    ),
+    (part) => part.segment,
+  );
+
+  return (letters[0] ?? "?").toUpperCase();
+}
 
 function Avatar({ comment }: { comment: PublicComment }) {
   if (!comment.author) {
@@ -40,9 +53,9 @@ function Avatar({ comment }: { comment: PublicComment }) {
   return (
     <div
       aria-hidden="true"
-      className="w-9 h-9 shrink-0 flex items-center justify-center font-serif text-sm text-accent bg-surface-muted rounded-full"
+      className="w-9 h-9 shrink-0 flex items-center justify-center font-serif text-sm text-accent bg-background rounded-full"
     >
-      {comment.author.name.trim().charAt(0).toUpperCase() || "?"}
+      {firstLetter(comment.author.name)}
     </div>
   );
 }
@@ -105,12 +118,15 @@ export default function CommentItem({
         ) : (
           <>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <p className="text-sm font-medium text-foreground">
+              <p
+                lang={textLang(comment.author?.name)}
+                className="text-sm font-medium text-foreground"
+              >
                 {comment.author?.name}
               </p>
 
               {comment.author?.isAuthor && (
-                <span className="px-2 py-0.5 text-xs font-medium text-accent-foreground bg-accent rounded-full">
+                <span className="px-2 py-0.5 text-xs font-medium text-accent-foreground bg-accent rounded-lg">
                   Author
                 </span>
               )}
@@ -136,13 +152,16 @@ export default function CommentItem({
                 onDone={() => setMode("view")}
               />
             ) : (
-              <p className="text-sm sm:text-base leading-7 whitespace-pre-line break-words text-foreground/90">
+              <p
+                lang={textLang(comment.body)}
+                className="text-sm sm:text-base leading-7 hi:leading-8 whitespace-pre-line break-words text-foreground/90"
+              >
                 {comment.body}
               </p>
             )}
 
             {mode !== "edit" && (canReply || comment.isMine) && (
-              <div className="flex flex-wrap items-center gap-4">
+              <div className="-ml-2.5 flex flex-wrap items-center gap-1">
                 {canReply && (
                   <button
                     type="button"

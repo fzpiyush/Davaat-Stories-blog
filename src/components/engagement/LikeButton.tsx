@@ -72,7 +72,7 @@ export default function LikeButton({ kind, targetId, label }: LikeButtonProps) {
         disabled={!state}
         aria-pressed={liked}
         aria-busy={isPending}
-        className="h-11 px-5 inline-flex items-center gap-2 text-sm font-medium text-foreground bg-background border border-border rounded-full transition-colors hover:bg-surface-muted aria-pressed:text-accent aria-pressed:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60 disabled:cursor-not-allowed group"
+        className="h-11 px-5 inline-flex items-center gap-2 text-sm font-medium text-foreground bg-background border border-border rounded-lg transition-colors hover:bg-surface-muted aria-pressed:text-accent aria-pressed:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60 disabled:cursor-not-allowed group"
       >
         {liked ? (
           <HeartSolidIcon aria-hidden="true" className="w-5 h-5 text-accent" />

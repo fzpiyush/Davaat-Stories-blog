@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowLeftIcon, ArrowRightIcon } from "@heroicons/react/20/solid";
 
+import { textLang } from "@/lib/content/script";
 import { formatDate } from "@/lib/formatDate";
 import type { ChapterListItem, ChapterReading } from "@/lib/story/types";
 
@@ -52,7 +53,10 @@ function NavCard({ href, label, chapter, direction }: NavCardProps) {
 
       <span className="text-xs text-accent">Chapter {chapter.number}</span>
 
-      <span className="line-clamp-2 font-serif text-lg sm:text-xl text-foreground transition-colors duration-200 group-hover:text-accent">
+      <span
+        lang={textLang(chapter.title)}
+        className="line-clamp-2 font-serif text-lg sm:text-xl hi:leading-[1.5] text-foreground transition-colors duration-200 group-hover:text-accent"
+      >
         {chapter.title}
       </span>
     </Link>
@@ -76,6 +80,7 @@ export default function ChapterReader({
       <header className="flex flex-col gap-5">
         <Link
           href={`/stories/${story.slug}`}
+          lang={textLang(story.title)}
           className="w-fit inline-flex items-center gap-1.5 text-sm text-muted rounded-sm transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent group"
         >
           <ArrowLeftIcon
@@ -89,7 +94,10 @@ export default function ChapterReader({
           Chapter {chapter.number}
         </p>
 
-        <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl leading-tight text-balance text-foreground">
+        <h1
+          lang={textLang(chapter.title)}
+          className="font-serif text-3xl sm:text-4xl lg:text-5xl leading-tight hi:leading-[1.4] text-balance text-foreground"
+        >
           {chapter.title}
         </h1>
 
@@ -147,7 +155,8 @@ export default function ChapterReader({
         {chapter.paragraphs.map((paragraph, index) => (
           <p
             key={`${chapter.id}-p-${index}`}
-            className="font-serif text-lg sm:text-xl leading-8 sm:leading-9 whitespace-pre-line text-pretty text-foreground/90"
+            lang={textLang(paragraph)}
+            className="font-serif text-lg sm:text-xl leading-8 sm:leading-9 hi:leading-9 sm:hi:leading-10 whitespace-pre-line text-pretty text-foreground/90"
           >
             {paragraph}
           </p>

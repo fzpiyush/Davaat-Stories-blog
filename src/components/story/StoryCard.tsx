@@ -1,7 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import ViewCount from "@/components/shared/ViewCount";
 import { pluralize } from "@/lib/admin/format";
+import { textLang } from "@/lib/content/script";
 import { PROGRESS_LABEL } from "@/lib/content/story";
 import { formatDate } from "@/lib/formatDate";
 import type { StorySummary } from "@/lib/story/types";
@@ -23,7 +25,7 @@ export default function StoryCard({
   const Heading = headingLevel;
 
   return (
-    <article className="w-full h-full flex flex-col bg-surface shadow-sm rounded-lg relative overflow-hidden transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-accent has-[a:focus-visible]:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:translate-y-0 group">
+    <article className="w-full h-full flex flex-col bg-linear-to-b from-surface to-surface-muted/60 shadow-sm rounded-lg relative overflow-hidden transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-accent has-[a:focus-visible]:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:translate-y-0 group">
       <div className="w-full aspect-3/4 bg-surface-muted relative overflow-hidden">
         <Image
           src={story.cover}
@@ -40,11 +42,17 @@ export default function StoryCard({
       </div>
 
       <div className="p-4 sm:p-5 flex flex-1 flex-col gap-2">
-        <span className="text-xs font-medium uppercase tracking-[0.15em] text-accent">
+        <span
+          lang={textLang(story.category)}
+          className="text-xs font-medium uppercase tracking-[0.15em] hi:tracking-normal text-accent"
+        >
           {story.category}
         </span>
 
-        <Heading className="line-clamp-2 font-serif text-lg sm:text-xl leading-tight text-foreground transition-colors duration-200 group-hover:text-accent">
+        <Heading
+          lang={textLang(story.title)}
+          className="line-clamp-2 font-serif text-lg sm:text-xl leading-tight hi:leading-[1.4] text-foreground transition-colors duration-200 group-hover:text-accent"
+        >
           <Link
             href={`/stories/${story.slug}`}
             className="focus-visible:outline-none after:absolute after:inset-0 after:content-['']"
@@ -53,16 +61,20 @@ export default function StoryCard({
           </Link>
         </Heading>
 
-        <p className="line-clamp-2 text-sm leading-6 text-muted">
+        <p
+          lang={textLang(story.blurb)}
+          className="line-clamp-2 text-sm leading-6 hi:leading-7 text-muted"
+        >
           {story.blurb}
         </p>
 
-        <div className="mt-auto pt-3 flex items-center gap-2 text-xs text-muted">
+        <div className="mt-auto pt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
           <span>{pluralize(story.chapterCount, "chapter")}</span>
           <span aria-hidden="true">•</span>
           <span>
             Updated <time dateTime={updated.iso}>{updated.label}</time>
           </span>
+          <ViewCount count={story.viewCount} separated />
         </div>
       </div>
     </article>

@@ -157,9 +157,14 @@ export default function BlogEditor({
     [sections],
   );
 
-  const readTimeMinutes = useMemo(
-    () => getReadTimeMinutes(countSectionWords(toBlogSections(sections))),
+  const wordCount = useMemo(
+    () => countSectionWords(toBlogSections(sections)),
     [sections],
+  );
+
+  const readTimeMinutes = useMemo(
+    () => getReadTimeMinutes(wordCount),
+    [wordCount],
   );
 
   // Warns before closing the tab with unsaved writing
@@ -303,6 +308,7 @@ export default function BlogEditor({
           <SectionsEditor
             sections={sections}
             onChange={withDirty(setSections)}
+            wordCount={wordCount}
             readTimeMinutes={readTimeMinutes}
             errors={errors.content}
           />

@@ -2,6 +2,9 @@
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
+/* Matches text marked lang hi, which textLang sets on Hindi text */
+@custom-variant hi (&:lang(hi));
+
 :root {
   --background: #fdfcfa;
   --foreground: #24211d;
@@ -21,25 +24,30 @@
   --wash: #dce2ec;
   /* Marigold, for small decorations only, never for text */
   --highlight: #e08e1f;
+  /* Soft light at the top of every page */
+  --glow: #e8ecf5;
 }
 
 [data-theme="dark"] {
-  --background: #1c1b19;
-  --foreground: #eeeae4;
+  /* Navy black ink, deeper than the night sky in the hero art */
+  --background: #070a12;
+  --foreground: #e9e6df;
 
-  --surface: #262421;
-  --surface-muted: #2f2c29;
+  --surface: #0d1220;
+  --surface-muted: #141a2e;
 
-  --muted: #b3aca3;
+  --muted: #98a0b8;
 
-  --accent: #d4a582;
-  --accent-hover: #e0b694;
-  --accent-foreground: #1c1612;
+  /* Lantern gold, so buttons and links glow against the ink */
+  --accent: #e2b374;
+  --accent-hover: #edc48a;
+  --accent-foreground: #0a0d18;
 
-  --border: #3a3632;
+  --border: #1d2440;
 
-  --wash: #1a2140;
+  --wash: #0f1630;
   --highlight: #e08e1f;
+  --glow: #131b3d;
 }
 
 @theme inline {
@@ -59,9 +67,11 @@
 
   --color-wash: var(--wash);
   --color-highlight: var(--highlight);
+  --color-glow: var(--glow);
 
-  --font-sans: var(--font-inter);
-  --font-serif: var(--font-lora);
+  /* Latin letters come from Inter and Lora, Hindi letters from Noto */
+  --font-sans: var(--font-inter), var(--font-noto-sans-devanagari), sans-serif;
+  --font-serif: var(--font-lora), var(--font-noto-serif-devanagari), serif;
 }
 
 html {
@@ -75,7 +85,16 @@ html[data-theme="dark"] {
 body {
   min-height: 100%;
   background: var(--background);
+  /* A soft glow at the top that fades into the page color */
+  background-image: radial-gradient(
+    ellipse 72rem 28rem at 50% 0,
+    var(--glow),
+    transparent 70%
+  );
+  background-repeat: no-repeat;
   color: var(--foreground);
-  font-family: var(--font-inter), sans-serif;
+  font-family: var(--font-inter), var(--font-noto-sans-devanagari), sans-serif;
+  /* Long pasted strings and links wrap instead of stretching the page */
+  overflow-wrap: break-word;
   -webkit-font-smoothing: antialiased;
 }

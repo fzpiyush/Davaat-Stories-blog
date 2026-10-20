@@ -18,6 +18,7 @@ import {
   inputClass,
   textareaClass,
 } from "@/lib/admin/ui";
+import { countWords } from "@/lib/content/text";
 import { BLOG_LIMITS } from "@/lib/validation/blog";
 
 export type KeyedSection = SectionDraft & { key: string };
@@ -35,6 +36,7 @@ export function withKeys(drafts: SectionDraft[]): KeyedSection[] {
 interface SectionsEditorProps {
   sections: KeyedSection[];
   onChange: (next: KeyedSection[]) => void;
+  wordCount: number;
   readTimeMinutes: number;
   errors?: string[];
 }
@@ -42,6 +44,7 @@ interface SectionsEditorProps {
 export default function SectionsEditor({
   sections,
   onChange,
+  wordCount,
   readTimeMinutes,
   errors,
 }: SectionsEditorProps) {
@@ -92,14 +95,24 @@ export default function SectionsEditor({
           Content
         </h2>
 
-        <p className="text-sm text-muted">
-          {pluralize(sections.length, "section")} • About {readTimeMinutes} min read
-        </p>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+          <span>{pluralize(sections.length, "section")}</span>
+          <span aria-hidden="true">•</span>
+          <span>{pluralize(wordCount, "word")}</span>
+          <span aria-hidden="true">•</span>
+          <span>About {readTimeMinutes} min read</span>
+        </div>
       </div>
 
       {error && (
-        <p role="alert" className="flex items-start gap-1.5 text-sm text-red-600">
-          <ExclamationCircleIcon aria-hidden="true" className="w-4 h-4 mt-0.5 shrink-0" />
+        <p
+          role="alert"
+          className="flex items-start gap-1.5 text-sm text-red-600"
+        >
+          <ExclamationCircleIcon
+            aria-hidden="true"
+            className="w-4 h-4 mt-0.5 shrink-0"
+          />
           {error}
         </p>
       )}
@@ -167,7 +180,9 @@ export default function SectionsEditor({
                   type="text"
                   value={section.heading}
                   maxLength={BLOG_LIMITS.heading}
-                  onChange={(event) => update(index, "heading", event.target.value)}
+                  onChange={(event) =>
+                    update(index, "heading", event.target.value)
+                  }
                   placeholder="Why a focused workflow matters"
                   className={inputClass}
                 />
@@ -187,13 +202,19 @@ export default function SectionsEditor({
                   rows={8}
                   maxLength={BLOG_LIMITS.body}
                   aria-describedby={`${fieldId}-body-hint`}
-                  onChange={(event) => update(index, "body", event.target.value)}
+                  onChange={(event) =>
+                    update(index, "body", event.target.value)
+                  }
                   placeholder="Start writing here."
                   className={textareaClass}
                 />
 
-                <p id={`${fieldId}-body-hint`} className="text-xs leading-5 text-muted">
-                  {BODY_HINT}
+                <p
+                  id={`${fieldId}-body-hint`}
+                  className="text-xs leading-5 text-muted"
+                >
+                  {BODY_HINT} {pluralize(countWords(section.body), "word")} in
+                  these paragraphs.
                 </p>
               </div>
 
@@ -203,7 +224,9 @@ export default function SectionsEditor({
                   className="flex items-center gap-2 text-sm font-medium text-foreground"
                 >
                   Quote
-                  <span className="text-xs font-normal text-muted">Optional</span>
+                  <span className="text-xs font-normal text-muted">
+                    Optional
+                  </span>
                 </label>
 
                 <input
@@ -211,7 +234,9 @@ export default function SectionsEditor({
                   type="text"
                   value={section.quote}
                   maxLength={BLOG_LIMITS.quote}
-                  onChange={(event) => update(index, "quote", event.target.value)}
+                  onChange={(event) =>
+                    update(index, "quote", event.target.value)
+                  }
                   placeholder="A line worth highlighting"
                   className={inputClass}
                 />

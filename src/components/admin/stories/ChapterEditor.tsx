@@ -32,6 +32,8 @@ export type ChapterEditorInitial = {
 const chapterTextClass =
   "w-full min-w-0 min-h-[60vh] px-5 py-4 font-serif text-base leading-8 text-foreground bg-background rounded-lg ring-1 ring-border outline-none resize-y placeholder:text-muted focus:ring-2 focus:ring-accent aria-invalid:ring-red-600";
 
+const CONTENT_HINT = "Leave an empty line between paragraphs.";
+
 interface ChapterEditorProps {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>;
   initial: ChapterEditorInitial;
@@ -72,7 +74,6 @@ export default function ChapterEditor({
   const wasPublished = !isNew && initial.status === "published";
   const titleId = `${id}-title`;
   const contentId = `${id}-content`;
-  const contentHint = `Leave an empty line between paragraphs. ${pluralize(stats.words, "word")}, ${pluralize(stats.paragraphs, "paragraph")}, about ${stats.minutes} min read.`;
 
   return (
     <form
@@ -102,11 +103,11 @@ export default function ChapterEditor({
         <FormField
           id={contentId}
           label="Chapter text"
-          hint={contentHint}
+          hint={CONTENT_HINT}
           errors={errors.content}
         >
           <textarea
-            {...getFieldA11y(contentId, errors.content, contentHint)}
+            {...getFieldA11y(contentId, errors.content, CONTENT_HINT)}
             name="content"
             value={content}
             maxLength={STORY_LIMITS.chapterBody}
@@ -115,6 +116,14 @@ export default function ChapterEditor({
             className={chapterTextClass}
           />
         </FormField>
+
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+          <span>{pluralize(stats.words, "word")}</span>
+          <span aria-hidden="true">•</span>
+          <span>{pluralize(stats.paragraphs, "paragraph")}</span>
+          <span aria-hidden="true">•</span>
+          <span>About {stats.minutes} min read</span>
+        </div>
       </div>
 
       <aside className="flex flex-col gap-6 xl:sticky xl:top-24">

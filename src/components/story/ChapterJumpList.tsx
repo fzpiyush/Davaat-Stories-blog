@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ChevronDownIcon, ListBulletIcon } from "@heroicons/react/20/solid";
 
+import { textLang } from "@/lib/content/script";
 import type { ChapterListItem } from "@/lib/story/types";
 
 interface ChapterJumpListProps {
@@ -36,7 +37,12 @@ export default function ChapterJumpList({
               className="w-full px-3 py-2 flex items-baseline gap-3 text-sm text-muted rounded-md transition-colors hover:bg-surface-muted hover:text-foreground aria-[current=page]:font-medium aria-[current=page]:text-accent aria-[current=page]:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               <span className="w-8 shrink-0 text-xs">{chapter.number}</span>
-              <span className="line-clamp-1">{chapter.title}</span>
+              <span
+                lang={textLang(chapter.title)}
+                className="line-clamp-1 hi:leading-6"
+              >
+                {chapter.title}
+              </span>
             </Link>
           </li>
         ))}

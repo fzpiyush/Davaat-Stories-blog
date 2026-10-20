@@ -10,6 +10,7 @@ import StoryCard from "@/components/story/StoryCard";
 import { getPublicAbout, getSiteStats } from "@/lib/about/queries";
 import { getPublicAuthor } from "@/lib/author/queries";
 import { getLatestBlogs } from "@/lib/blog/queries";
+import { pageBackgroundClass } from "@/lib/content/pageBackground";
 import { splitParagraphs } from "@/lib/content/text";
 import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/site";
 import { getLatestStories } from "@/lib/story/queries";
@@ -136,7 +137,7 @@ export default async function AboutPage() {
     <>
       <section
         aria-labelledby="about-heading"
-        className="w-full bg-background relative isolate overflow-hidden"
+        className={`w-full ${pageBackgroundClass} relative isolate overflow-hidden`}
       >
         <div
           aria-hidden="true"
@@ -149,8 +150,6 @@ export default async function AboutPage() {
 
           {/* Blue ink mist right behind the text, fading into the painting */}
           <div className="bg-radial-[ellipse_at_50%_32%] from-wash/85 via-wash/40 via-35% to-transparent to-65% absolute inset-0" />
-
-          <div className="h-32 bg-linear-to-t from-background to-transparent absolute inset-x-0 bottom-0" />
         </div>
 
         <div className="w-full max-w-3xl min-h-[min(125vw,52rem)] md:min-h-[min(56vw,48rem)] px-4 pt-28 pb-24 sm:px-6 sm:pt-32 mx-auto flex flex-col items-center gap-5 text-center">
@@ -223,7 +222,9 @@ export default async function AboutPage() {
         </div>
       </section>
 
-      <div className="w-full pb-4 flex flex-col gap-16 sm:gap-20">
+      <div
+        className={`w-full pb-4 flex flex-col gap-16 sm:gap-20 ${pageBackgroundClass}`}
+      >
         {introParagraphs.length > 0 && (
           <section
             aria-label="Introduction"

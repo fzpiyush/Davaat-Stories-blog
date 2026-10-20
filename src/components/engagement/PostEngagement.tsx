@@ -19,16 +19,21 @@ export default function PostEngagement({
   return (
     <section
       aria-label="Reactions and comments"
-      className="w-full max-w-3xl px-4 pb-16 sm:px-6 sm:pb-20 lg:px-0 mx-auto flex flex-col gap-12"
+      className="w-full px-4 pb-12 sm:px-6 sm:pb-16 lg:px-8"
     >
-      <div className="py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-y border-border">
-        <p className="font-serif text-lg sm:text-xl text-foreground">
-          {prompt}
-        </p>
-        <LikeButton kind={kind} targetId={targetId} label={likeLabel} />
-      </div>
+      {/* Same shell as the article, so from xl this starts at the text's left edge */}
+      <div className="w-full max-w-274 mx-auto">
+        <div className="w-full max-w-3xl mx-auto xl:mx-0 flex flex-col gap-6 sm:gap-8">
+          <div className="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-linear-to-br from-surface to-surface-muted border border-border rounded-lg">
+            <p className="font-serif text-lg sm:text-xl text-foreground">
+              {prompt}
+            </p>
+            <LikeButton kind={kind} targetId={targetId} label={likeLabel} />
+          </div>
 
-      <CommentsSection kind={kind} targetId={targetId} />
+          <CommentsSection kind={kind} targetId={targetId} />
+        </div>
+      </div>
     </section>
   );
 }

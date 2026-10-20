@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ArrowRightEndOnRectangleIcon } from "@heroicons/react/20/solid";
 
+import { buttonClass, smallButtonClass } from "@/lib/admin/ui";
 import { pluralize } from "@/lib/admin/format";
 import {
   createComment,
@@ -98,7 +99,7 @@ export default function CommentsSection({
     <section
       id="comments"
       aria-labelledby="comments-heading"
-      className="w-full flex flex-col gap-8 scroll-mt-24"
+      className="w-full p-5 sm:p-6 flex flex-col gap-6 bg-linear-to-br from-surface to-surface-muted rounded-lg scroll-mt-24"
     >
       <div className="flex items-baseline justify-between gap-4">
         <h2
@@ -125,11 +126,11 @@ export default function CommentsSection({
           </p>
           <div
             aria-hidden="true"
-            className="w-full h-24 bg-surface-muted rounded-lg"
+            className="w-full h-24 bg-background/60 rounded-lg"
           />
           <div
             aria-hidden="true"
-            className="w-2/3 h-4 bg-surface-muted rounded"
+            className="w-2/3 h-4 bg-background/60 rounded-lg"
           />
         </div>
       )}
@@ -147,11 +148,11 @@ export default function CommentsSection({
             }
           />
         ) : viewer?.isBlocked ? (
-          <p className="p-4 text-sm text-muted bg-surface-muted rounded-lg">
+          <p className="p-4 text-sm text-muted bg-background border border-border rounded-lg">
             Commenting is turned off for your account.
           </p>
         ) : (
-          <div className="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-surface-muted rounded-lg">
+          <div className="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-background border border-border rounded-lg">
             <div className="flex flex-col gap-1">
               <p className="font-serif text-lg text-foreground">
                 Join the conversation
@@ -163,7 +164,7 @@ export default function CommentsSection({
 
             <a
               href={buildSignInHref(pathname, "#comments")}
-              className="w-fit px-5 py-2.5 inline-flex items-center gap-2 text-sm font-medium text-accent-foreground bg-accent rounded-lg transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-muted"
+              className={`${buttonClass.primary} w-fit`}
             >
               <ArrowRightEndOnRectangleIcon
                 aria-hidden="true"
@@ -180,7 +181,7 @@ export default function CommentsSection({
           <button
             type="button"
             onClick={refresh}
-            className="font-medium text-accent underline underline-offset-4 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className={smallButtonClass.secondary}
           >
             Try again
           </button>
@@ -189,9 +190,9 @@ export default function CommentsSection({
 
       {payload &&
         (payload.comments.length > 0 ? (
-          <ol className="flex flex-col gap-8">
+          <ol className="flex flex-col divide-y divide-border">
             {payload.comments.map((comment) => (
-              <li key={comment.id}>
+              <li key={comment.id} className="py-6 first:pt-0 last:pb-0">
                 <CommentItem
                   comment={comment}
                   canComment={canComment}
@@ -209,7 +210,7 @@ export default function CommentsSection({
             ))}
           </ol>
         ) : (
-          <p className="py-6 text-center text-sm text-muted">
+          <p className="py-4 text-center text-sm text-muted">
             No comments yet. Be the first to share a thought.
           </p>
         ))}

@@ -13,6 +13,8 @@ export interface StorySummary {
   chapterCount: number;
   publishedAt: string;
   updatedAt: string;
+  /* Story page views plus views on all its chapters */
+  viewCount?: number;
 }
 
 /* The story page */

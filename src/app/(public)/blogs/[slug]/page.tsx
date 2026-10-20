@@ -97,8 +97,12 @@ export default async function BlogPage({ params }: BlogPageProps) {
         prompt="Enjoyed this post? Let me know."
       />
 
-      <div className="w-full max-w-3xl px-4 pb-16 sm:px-6 sm:pb-20 lg:px-0 mx-auto">
-        <BlogNavigation previousBlog={previousBlog} nextBlog={nextBlog} />
+      <div className="w-full px-4 pb-16 sm:px-6 sm:pb-20 lg:px-8">
+        <div className="w-full max-w-274 mx-auto">
+          <div className="w-full max-w-3xl mx-auto xl:mx-0">
+            <BlogNavigation previousBlog={previousBlog} nextBlog={nextBlog} />
+          </div>
+        </div>
       </div>
     </>
   );

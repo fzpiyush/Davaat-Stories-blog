@@ -6,6 +6,7 @@ import { ChatBubbleLeftRightIcon } from "@heroicons/react/20/solid";
 import LikeButton from "@/components/engagement/LikeButton";
 import ViewTracker from "@/components/engagement/ViewTracker";
 import ChapterReader from "@/components/story/ChapterReader";
+import { truncateText } from "@/lib/content/script";
 import { SITE_NAME } from "@/lib/site";
 import {
   getChapter,
@@ -69,10 +70,13 @@ export async function generateMetadata({
 
   const { story, chapter } = loaded;
   const title = `Chapter ${chapter.number}: ${chapter.title}`;
+  const firstParagraph = chapter.paragraphs[0];
 
   return {
     title: `${title} | ${story.title}`,
-    description: chapter.paragraphs[0]?.slice(0, 160) ?? story.blurb,
+    description: firstParagraph
+      ? truncateText(firstParagraph, 160)
+      : story.blurb,
     openGraph: {
       type: "article",
       title,

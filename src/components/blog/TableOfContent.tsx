@@ -2,6 +2,8 @@
 
 import { useEffect, useState, type MouseEvent } from "react";
 
+import { textLang } from "@/lib/content/script";
+
 export type TocItem = {
   id: string;
   heading: string;
@@ -27,9 +29,7 @@ export default function TableOfContents({ items }: TableOfContentsProps) {
       (entries) => {
         const visible = entries
           .filter((entry) => entry.isIntersecting)
-          .sort(
-            (a, b) => a.boundingClientRect.top - b.boundingClientRect.top,
-          );
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
 
         if (visible.length > 0) {
           setActiveId(visible[0].target.id);
@@ -68,7 +68,7 @@ export default function TableOfContents({ items }: TableOfContentsProps) {
   return (
     <nav
       aria-labelledby="toc-heading"
-      className="w-full p-6 hidden lg:flex flex-col gap-4 bg-surface-muted rounded-lg"
+      className="w-full p-6 flex flex-col gap-4 bg-linear-to-br from-surface to-surface-muted border border-border rounded-lg"
     >
       <h2
         id="toc-heading"
@@ -85,9 +85,10 @@ export default function TableOfContents({ items }: TableOfContentsProps) {
             <li key={item.id}>
               <a
                 href={`#${item.id}`}
+                lang={textLang(item.heading)}
                 onClick={(event) => handleClick(event, item.id)}
                 aria-current={active ? "location" : undefined}
-                className="w-full py-1.5 pl-4 block text-sm leading-6 text-muted border-l-2 border-border rounded-r-sm transition-colors duration-200 hover:text-foreground aria-[current=location]:font-medium aria-[current=location]:text-accent aria-[current=location]:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent motion-reduce:transition-none"
+                className="w-full py-1.5 pl-4 block text-sm leading-6 hi:leading-7 text-muted border-l-2 border-border rounded-r-lg transition-colors duration-200 hover:text-foreground aria-[current=location]:font-medium aria-[current=location]:text-accent aria-[current=location]:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent motion-reduce:transition-none"
               >
                 {item.heading}
               </a>

@@ -2,59 +2,61 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRightIcon } from "@heroicons/react/20/solid";
 
-const DEFAULT_BIO =
-  "Writing about technology, life, ideas, and the lessons I learn along the way.";
+import { smallButtonClass } from "@/lib/admin/ui";
+import { textLang } from "@/lib/content/script";
 
 interface AuthorCardProps {
   name: string;
-  bio?: string;
-  avatarUrl?: string | null;
+  bio: string;
+  avatarUrl: string | null;
 }
 
-export default function AuthorCard({
-  name,
-  bio,
-  avatarUrl = null,
-}: AuthorCardProps) {
-  const initial = name.trim().charAt(0).toUpperCase();
-  const text = bio?.trim() || DEFAULT_BIO;
+export default function AuthorCard({ name, bio, avatarUrl }: AuthorCardProps) {
+  const initial = Array.from((name ?? "").trim())[0] ?? "?";
 
   return (
-    <aside
+    <section
       aria-label="About the author"
-      className="w-full p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 bg-surface-muted rounded-lg"
+      className="w-full p-5 sm:p-6 flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-5 bg-linear-to-br from-surface to-surface-muted border border-border rounded-lg"
     >
-      {avatarUrl ? (
-        <div className="w-14 h-14 shrink-0 bg-background rounded-full relative overflow-hidden">
+      <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 flex items-center justify-center font-serif text-xl text-accent bg-background border border-border rounded-lg relative overflow-hidden">
+        {avatarUrl ? (
           <Image
             src={avatarUrl}
             alt=""
             fill
-            sizes="56px"
+            sizes="64px"
             className="object-cover"
           />
-        </div>
-      ) : (
-        <div
-          aria-hidden="true"
-          className="w-14 h-14 shrink-0 flex items-center justify-center font-serif text-2xl text-accent bg-background rounded-full"
-        >
-          {initial}
-        </div>
-      )}
+        ) : (
+          <span aria-hidden="true">{initial}</span>
+        )}
+      </div>
 
-      <div className="flex flex-col gap-2">
-        <p className="text-sm font-medium uppercase tracking-[0.15em] text-accent">
+      <div className="min-w-0 flex flex-col gap-2">
+        <p className="text-xs font-medium uppercase tracking-[0.2em] text-accent">
           Written by
         </p>
 
-        <p className="font-serif text-2xl text-foreground">{name}</p>
+        <p
+          lang={textLang(name)}
+          className="font-serif text-xl sm:text-2xl leading-tight hi:leading-[1.4] text-foreground"
+        >
+          {name}
+        </p>
 
-        <p className="text-sm leading-6 text-pretty text-muted">{text}</p>
+        {bio && (
+          <p
+            lang={textLang(bio)}
+            className="text-sm leading-6 hi:leading-7 text-muted"
+          >
+            {bio}
+          </p>
+        )}
 
         <Link
           href="/about"
-          className="w-fit inline-flex items-center gap-1.5 text-sm font-medium text-accent rounded-lg transition-colors hover:text-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent group"
+          className={`${smallButtonClass.secondary} w-fit mt-2 group`}
         >
           More about me
           <ArrowRightIcon
@@ -63,6 +65,6 @@ export default function AuthorCard({
           />
         </Link>
       </div>
-    </aside>
+    </section>
   );
 }

@@ -4,6 +4,7 @@ import { ArrowLeftIcon, ArrowRightIcon } from "@heroicons/react/20/solid";
 
 import { pluralize } from "@/lib/admin/format";
 import { PROGRESS_LABEL } from "@/lib/content/story";
+import { textLang } from "@/lib/content/script";
 import { getReadTimeMinutes } from "@/lib/content/text";
 import { formatDate } from "@/lib/formatDate";
 import type { ChapterListItem, StoryDetail } from "@/lib/story/types";
@@ -50,19 +51,28 @@ export default function StoryOverview({ story, chapters }: StoryOverviewProps) {
             <span className="px-3 py-1.5 text-xs font-medium text-accent-foreground bg-accent rounded-full">
               {PROGRESS_LABEL[story.progress]}
             </span>
-            <span className="px-3 py-1.5 text-xs font-medium text-accent bg-surface-muted rounded-full">
+            <span
+              lang={textLang(story.category)}
+              className="px-3 py-1.5 text-xs font-medium text-accent bg-surface-muted rounded-full"
+            >
               {story.category}
             </span>
           </div>
 
-          <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl leading-[1.05] tracking-tight text-balance text-foreground">
+          <h1
+            lang={textLang(story.title)}
+            className="font-serif text-4xl sm:text-5xl lg:text-6xl leading-[1.05] tracking-tight hi:leading-[1.3] hi:tracking-normal text-balance text-foreground"
+          >
             {story.title}
           </h1>
 
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
             <span>
               By{" "}
-              <span className="font-medium text-foreground">
+              <span
+                lang={textLang(story.author)}
+                className="font-medium text-foreground"
+              >
                 {story.author}
               </span>
             </span>
@@ -80,7 +90,10 @@ export default function StoryOverview({ story, chapters }: StoryOverviewProps) {
             </span>
           </div>
 
-          <p className="max-w-2xl text-base sm:text-lg leading-7 sm:leading-8 whitespace-pre-line text-pretty text-muted">
+          <p
+            lang={textLang(story.blurb)}
+            className="max-w-2xl text-base sm:text-lg leading-7 sm:leading-8 whitespace-pre-line text-pretty text-muted"
+          >
             {story.blurb}
           </p>
 
@@ -89,6 +102,7 @@ export default function StoryOverview({ story, chapters }: StoryOverviewProps) {
               {story.tags.map((tag) => (
                 <li
                   key={tag}
+                  lang={textLang(tag)}
                   className="px-3 py-1.5 text-xs text-muted bg-surface-muted rounded-full"
                 >
                   {tag}
@@ -158,7 +172,10 @@ export default function StoryOverview({ story, chapters }: StoryOverviewProps) {
                       <span className="text-xs font-medium uppercase tracking-[0.15em] text-accent">
                         Chapter {chapter.number}
                       </span>
-                      <span className="line-clamp-1 font-serif text-lg text-foreground transition-colors group-hover:text-accent">
+                      <span
+                        lang={textLang(chapter.title)}
+                        className="line-clamp-1 font-serif text-lg hi:leading-[1.5] text-foreground transition-colors group-hover:text-accent"
+                      >
                         {chapter.title}
                       </span>
                     </span>

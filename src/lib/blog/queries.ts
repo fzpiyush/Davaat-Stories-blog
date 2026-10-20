@@ -4,8 +4,10 @@ import type { Knex } from "knex";
 import { cache } from "react";
 
 import type { Blog, BlogSummary } from "@/lib/blog/types";
+import type { FilterOption } from "@/lib/content/filters";
 import { formatReadTime } from "@/lib/content/text";
 import { db } from "@/lib/db/knex";
+import { escapeLike } from "@/lib/db/sql";
 import type { BlogSection } from "@/lib/db/types";
 
 export const BLOGS_PER_PAGE = 12;
@@ -25,6 +27,7 @@ type SummaryRow = {
   image_url: string;
   author_name: string | null;
   tags: string[] | null;
+  view_count: number;
 };
 
 type DetailRow = SummaryRow & {
@@ -33,12 +36,25 @@ type DetailRow = SummaryRow & {
   author_avatar_url: string | null;
 };
 
+export type BlogListFilters = {
+  query: string;
+  category: string;
+  tag: string;
+};
+
+export type BlogListParams = BlogListFilters & {
+  page: number;
+};
+
 const TAGS_SQL = `coalesce((
   select array_agg(t.name order by lower(t.name))
   from blog_tags bt
   join tags t on t.id = bt.tag_id
   where bt.blog_id = b.id
 ), '{}') as tags`;
+
+const VIEWS_SQL =
+  "(select count(*) from page_views pv where pv.blog_id = b.id)::int as view_count";
 
 const NEWEST_FIRST = [
   { column: "b.published_at", order: "desc" },
@@ -61,6 +77,45 @@ function liveBlogs(): Knex.QueryBuilder {
     .modify(whereLive);
 }
 
+/* Search looks at the title, excerpt and tags. Category and tag match exactly */
+function applyFilters(
+  builder: Knex.QueryBuilder,
+  filters: BlogListFilters,
+): void {
+  const { query, category, tag } = filters;
+
+  if (query) {
+    const pattern = `%${escapeLike(query)}%`;
+
+    builder.where((search) => {
+      search
+        .whereILike("b.title", pattern)
+        .orWhereILike("b.excerpt", pattern)
+        .orWhereIn(
+          "b.id",
+          db("blog_tags as bt")
+            .join("tags as t", "t.id", "bt.tag_id")
+            .whereILike("t.name", pattern)
+            .select("bt.blog_id"),
+        );
+    });
+  }
+
+  if (category) {
+    builder.where("c.slug", category);
+  }
+
+  if (tag) {
+    builder.whereIn(
+      "b.id",
+      db("blog_tags as bt")
+        .join("tags as t", "t.id", "bt.tag_id")
+        .where("t.slug", tag)
+        .select("bt.blog_id"),
+    );
+  }
+}
+
 function selectSummary(builder: Knex.QueryBuilder): Knex.QueryBuilder {
   return builder.select(
     "b.id",
@@ -73,6 +128,7 @@ function selectSummary(builder: Knex.QueryBuilder): Knex.QueryBuilder {
     "m.url as image_url",
     "a.name as author_name",
     db.raw(TAGS_SQL),
+    db.raw(VIEWS_SQL),
   );
 }
 
@@ -88,6 +144,7 @@ function toSummary(row: SummaryRow): BlogSummary {
     publishedAt: row.published_at.toISOString(),
     readTime: formatReadTime(row.read_time_minutes),
     author: row.author_name ?? FALLBACK_AUTHOR,
+    viewCount: row.view_count,
   };
 }
 
@@ -124,12 +181,14 @@ export async function getLatestBlogs(
   return rows.map(toSummary);
 }
 
-export async function getBlogsPage(
-  page: number,
-): Promise<{ items: BlogSummary[]; total: number }> {
+export async function getBlogsPage({
+  page,
+  ...filters
+}: BlogListParams): Promise<{ items: BlogSummary[]; total: number }> {
   const [countRow, rows] = await Promise.all([
-    liveBlogs().count({ count: "*" }).first(),
+    liveBlogs().modify(applyFilters, filters).count({ count: "*" }).first(),
     selectSummary(liveBlogs())
+      .modify(applyFilters, filters)
       .orderBy([...NEWEST_FIRST])
       .limit(BLOGS_PER_PAGE)
       .offset((page - 1) * BLOGS_PER_PAGE),
@@ -139,6 +198,36 @@ export async function getBlogsPage(
     items: (rows as SummaryRow[]).map(toSummary),
     total: Number(countRow?.count ?? 0),
   };
+}
+
+/* Only categories and tags that have at least one live blog */
+export async function getBlogFilterOptions(): Promise<{
+  categories: FilterOption[];
+  tags: FilterOption[];
+}> {
+  const [categories, tags]: FilterOption[][] = await Promise.all([
+    db("categories as c")
+      .whereExists(
+        db("blogs as b")
+          .select(db.raw("1"))
+          .whereRaw("b.category_id = c.id")
+          .modify(whereLive),
+      )
+      .select("c.slug as slug", "c.name as name")
+      .orderByRaw("lower(c.name) asc"),
+    db("tags as t")
+      .whereExists(
+        db("blog_tags as bt")
+          .select(db.raw("1"))
+          .join("blogs as b", "b.id", "bt.blog_id")
+          .whereRaw("bt.tag_id = t.id")
+          .modify(whereLive),
+      )
+      .select("t.slug as slug", "t.name as name")
+      .orderByRaw("lower(t.name) asc"),
+  ]);
+
+  return { categories, tags };
 }
 
 /* Cached per request, so the page and its metadata share one query */

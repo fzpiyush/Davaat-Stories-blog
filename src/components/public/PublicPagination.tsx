@@ -1,10 +1,14 @@
 import Link from "next/link";
 import { ArrowLeftIcon, ArrowRightIcon } from "@heroicons/react/20/solid";
 
+import { buildListHref } from "@/lib/content/filters";
+
 interface PublicPaginationProps {
   page: number;
   totalPages: number;
   basePath: string;
+  /** Search and filters to keep when moving between pages */
+  params?: Record<string, string>;
 }
 
 const linkClass =
@@ -13,18 +17,18 @@ const linkClass =
 const disabledClass =
   "px-5 py-3 inline-flex items-center gap-2 text-sm font-medium text-muted border border-border rounded-lg opacity-50 cursor-not-allowed";
 
-function hrefFor(basePath: string, page: number): string {
-  return page > 1 ? `${basePath}?page=${page}` : basePath;
-}
-
 export default function PublicPagination({
   page,
   totalPages,
   basePath,
+  params = {},
 }: PublicPaginationProps) {
   if (totalPages <= 1) {
     return null;
   }
+
+  const hrefFor = (target: number) =>
+    buildListHref(basePath, { ...params, page: target });
 
   return (
     <nav
@@ -32,7 +36,7 @@ export default function PublicPagination({
       className="pt-4 flex items-center justify-between gap-4 border-t border-border"
     >
       {page > 1 ? (
-        <Link href={hrefFor(basePath, page - 1)} className={linkClass}>
+        <Link href={hrefFor(page - 1)} className={linkClass}>
           <ArrowLeftIcon
             aria-hidden="true"
             className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-1 motion-reduce:transition-none"
@@ -51,7 +55,7 @@ export default function PublicPagination({
       </p>
 
       {page < totalPages ? (
-        <Link href={hrefFor(basePath, page + 1)} className={linkClass}>
+        <Link href={hrefFor(page + 1)} className={linkClass}>
           Older
           <ArrowRightIcon
             aria-hidden="true"

@@ -3,12 +3,14 @@ import "server-only";
 import type { Knex } from "knex";
 import { cache } from "react";
 
+import type { FilterOption } from "@/lib/content/filters";
 import {
   formatReadTime,
   getReadTimeMinutes,
   splitParagraphs,
 } from "@/lib/content/text";
 import { db } from "@/lib/db/knex";
+import { escapeLike } from "@/lib/db/sql";
 import type { StoryProgress } from "@/lib/db/types";
 import type {
   ChapterListItem,
@@ -39,6 +41,16 @@ const LAST_ACTIVITY_SQL = `greatest(
   coalesce((select max(ch.published_at) from chapters ch where ${LIVE_CHAPTER}), s.published_at)
 ) as last_activity`;
 
+// Views on the story page itself plus views on all of its chapters
+const VIEWS_SQL = `(
+  (select count(*) from page_views pv where pv.story_id = s.id)
+  + (
+    select count(*) from page_views pv
+    join chapters ch on ch.id = pv.chapter_id
+    where ch.story_id = s.id
+  )
+)::int as view_count`;
+
 const LATEST_FIRST = [
   { column: "last_activity", order: "desc" },
   { column: "s.id", order: "desc" },
@@ -56,6 +68,7 @@ type SummaryRow = {
   tags: string[] | null;
   chapter_count: number;
   last_activity: Date;
+  view_count: number;
 };
 
 type DetailRow = SummaryRow & {
@@ -73,6 +86,17 @@ type ChapterRowLite = {
   word_count: number;
 };
 
+export type StoryListFilters = {
+  query: string;
+  category: string;
+  tag: string;
+  progress: StoryProgress | "";
+};
+
+export type StoryListParams = StoryListFilters & {
+  page: number;
+};
+
 function whereLive(builder: Knex.QueryBuilder): void {
   builder
     .whereNot("s.status", "draft")
@@ -85,6 +109,49 @@ function liveStories(): Knex.QueryBuilder {
     .join("media as m", "m.id", "s.cover_media_id")
     .leftJoin("categories as c", "c.id", "s.category_id")
     .modify(whereLive);
+}
+
+/* Search looks at the title, blurb and tags. The rest match exactly */
+function applyFilters(
+  builder: Knex.QueryBuilder,
+  filters: StoryListFilters,
+): void {
+  const { query, category, tag, progress } = filters;
+
+  if (query) {
+    const pattern = `%${escapeLike(query)}%`;
+
+    builder.where((search) => {
+      search
+        .whereILike("s.title", pattern)
+        .orWhereILike("s.blurb", pattern)
+        .orWhereIn(
+          "s.id",
+          db("story_tags as st")
+            .join("tags as t", "t.id", "st.tag_id")
+            .whereILike("t.name", pattern)
+            .select("st.story_id"),
+        );
+    });
+  }
+
+  if (category) {
+    builder.where("c.slug", category);
+  }
+
+  if (tag) {
+    builder.whereIn(
+      "s.id",
+      db("story_tags as st")
+        .join("tags as t", "t.id", "st.tag_id")
+        .where("t.slug", tag)
+        .select("st.story_id"),
+    );
+  }
+
+  if (progress) {
+    builder.where("s.progress", progress);
+  }
 }
 
 function selectSummary(builder: Knex.QueryBuilder): Knex.QueryBuilder {
@@ -102,6 +169,7 @@ function selectSummary(builder: Knex.QueryBuilder): Knex.QueryBuilder {
       `(select count(*) from chapters ch where ${LIVE_CHAPTER})::int as chapter_count`,
     ),
     db.raw(LAST_ACTIVITY_SQL),
+    db.raw(VIEWS_SQL),
   );
 }
 
@@ -118,6 +186,7 @@ function toSummary(row: SummaryRow): StorySummary {
     chapterCount: row.chapter_count,
     publishedAt: row.published_at.toISOString(),
     updatedAt: row.last_activity.toISOString(),
+    viewCount: row.view_count,
   };
 }
 
@@ -164,12 +233,14 @@ export async function getLatestStories(
   return rows.map(toSummary);
 }
 
-export async function getStoriesPage(
-  page: number,
-): Promise<{ items: StorySummary[]; total: number }> {
+export async function getStoriesPage({
+  page,
+  ...filters
+}: StoryListParams): Promise<{ items: StorySummary[]; total: number }> {
   const [countRow, rows] = await Promise.all([
-    liveStories().count({ count: "*" }).first(),
+    liveStories().modify(applyFilters, filters).count({ count: "*" }).first(),
     selectSummary(liveStories())
+      .modify(applyFilters, filters)
       .orderBy([...LATEST_FIRST])
       .limit(STORIES_PER_PAGE)
       .offset((page - 1) * STORIES_PER_PAGE),
@@ -179,6 +250,36 @@ export async function getStoriesPage(
     items: (rows as SummaryRow[]).map(toSummary),
     total: Number(countRow?.count ?? 0),
   };
+}
+
+/* Only categories and tags that have at least one live story */
+export async function getStoryFilterOptions(): Promise<{
+  categories: FilterOption[];
+  tags: FilterOption[];
+}> {
+  const [categories, tags]: FilterOption[][] = await Promise.all([
+    db("categories as c")
+      .whereExists(
+        db("stories as s")
+          .select(db.raw("1"))
+          .whereRaw("s.category_id = c.id")
+          .modify(whereLive),
+      )
+      .select("c.slug as slug", "c.name as name")
+      .orderByRaw("lower(c.name) asc"),
+    db("tags as t")
+      .whereExists(
+        db("story_tags as st")
+          .select(db.raw("1"))
+          .join("stories as s", "s.id", "st.story_id")
+          .whereRaw("st.tag_id = t.id")
+          .modify(whereLive),
+      )
+      .select("t.slug as slug", "t.name as name")
+      .orderByRaw("lower(t.name) asc"),
+  ]);
+
+  return { categories, tags };
 }
 
 export const getStoryBySlug = cache(

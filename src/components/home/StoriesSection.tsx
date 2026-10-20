@@ -2,9 +2,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRightIcon } from "@heroicons/react/20/solid";
 
+import ViewAllLink from "@/components/shared/ViewAllLink";
+import ViewCount from "@/components/shared/ViewCount";
 import StoryCard from "@/components/story/StoryCard";
 import { pluralize } from "@/lib/admin/format";
+import { textLang } from "@/lib/content/script";
 import { PROGRESS_LABEL } from "@/lib/content/story";
+import { cardButtonLargeClass } from "@/lib/publicUi";
 import { getFeaturedStory, getLatestStories } from "@/lib/story/queries";
 import type { StorySummary } from "@/lib/story/types";
 
@@ -12,18 +16,18 @@ const LATEST_LIMIT = 3;
 
 function FeaturedStoryCard({ story }: { story: StorySummary }) {
   return (
-    <article className="w-full grid sm:grid-cols-[200px_minmax(0,1fr)] md:grid-cols-[260px_minmax(0,1fr)] bg-surface shadow-sm rounded-lg relative overflow-hidden transition-shadow duration-300 hover:shadow-md has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-accent has-[a:focus-visible]:ring-offset-2 group">
-      <div className="w-full aspect-3/4 bg-surface-muted relative overflow-hidden">
+    <article className="w-full grid sm:grid-cols-[200px_minmax(0,1fr)] md:grid-cols-[220px_minmax(0,1fr)] bg-linear-to-br from-surface to-surface-muted shadow-sm rounded-lg relative overflow-hidden transition-shadow duration-300 hover:shadow-md has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-accent has-[a:focus-visible]:ring-offset-2 group">
+      <div className="w-full aspect-16/10 sm:aspect-3/4 bg-surface-muted relative overflow-hidden">
         <Image
           src={story.cover}
           alt=""
           fill
-          sizes="(min-width: 768px) 260px, (min-width: 640px) 200px, 100vw"
+          sizes="(min-width: 768px) 220px, (min-width: 640px) 200px, 100vw"
           className="object-cover transition-transform duration-500 ease-out group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
         />
       </div>
 
-      <div className="p-6 sm:p-8 lg:p-10 flex flex-col justify-center gap-4">
+      <div className="p-5 sm:p-6 lg:p-8 flex flex-col justify-center gap-3 sm:gap-4">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
             Featured story
@@ -36,31 +40,42 @@ function FeaturedStoryCard({ story }: { story: StorySummary }) {
           </span>
         </div>
 
-        <h3 className="font-serif text-3xl sm:text-4xl leading-tight text-balance text-foreground transition-colors duration-200 group-hover:text-accent">
-          <Link
-            href={`/stories/${story.slug}`}
-            className="focus-visible:outline-none after:absolute after:inset-0 after:content-['']"
-          >
-            {story.title}
-          </Link>
+        <h3
+          lang={textLang(story.title)}
+          className="line-clamp-2 font-serif text-2xl sm:text-3xl leading-tight hi:leading-[1.35] text-balance text-foreground transition-colors duration-200 group-hover:text-accent"
+        >
+          {story.title}
         </h3>
 
-        <p className="max-w-xl line-clamp-4 text-base leading-7 text-pretty text-muted">
+        <p
+          lang={textLang(story.blurb)}
+          className="max-w-xl line-clamp-3 sm:line-clamp-4 text-sm sm:text-base leading-6 sm:leading-7 hi:sm:leading-8 text-pretty text-muted"
+        >
           {story.blurb}
         </p>
 
-        <div className="pt-2 flex items-center justify-between gap-4">
-          <span className="text-sm text-muted">
-            {story.category} • {pluralize(story.chapterCount, "chapter")}
-          </span>
+        <div className="pt-1 flex items-center justify-between gap-3">
+          <div
+            lang={textLang(story.category)}
+            className="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted"
+          >
+            <span>{story.category}</span>
+            <span aria-hidden="true">•</span>
+            <span>{pluralize(story.chapterCount, "chapter")}</span>
+            <ViewCount count={story.viewCount} separated />
+          </div>
 
-          <span
-            aria-hidden="true"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-accent"
+          <Link
+            href={`/stories/${story.slug}`}
+            className={cardButtonLargeClass}
           >
             Start reading
-            <ArrowRightIcon className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1 motion-reduce:transition-none" />
-          </span>
+            <span className="sr-only"> {story.title}</span>
+            <ArrowRightIcon
+              aria-hidden="true"
+              className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1 motion-reduce:transition-none"
+            />
+          </Link>
         </div>
       </div>
     </article>
@@ -79,32 +94,23 @@ export default async function StoriesSection() {
   return (
     <section
       aria-labelledby="stories-heading"
-      className="w-full max-w-7xl 2xl:max-w-360 px-4 pb-12 sm:px-6 sm:pb-16 lg:px-8 lg:pb-20 mx-auto flex flex-col gap-8 sm:gap-10"
+      className="w-full max-w-7xl 2xl:max-w-360 px-4 py-10 sm:px-6 sm:py-14 lg:px-8 lg:py-16 mx-auto flex flex-col gap-6 sm:gap-8"
     >
-      <div className="grid gap-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-        <div className="flex flex-col gap-3">
+      <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end sm:gap-6">
+        <div className="flex flex-col gap-2 sm:gap-3">
           <p className="text-sm font-medium uppercase tracking-[0.2em] text-accent">
             Stories
           </p>
 
           <h2
             id="stories-heading"
-            className="font-serif text-3xl sm:text-4xl lg:text-5xl text-balance text-foreground"
+            className="font-serif text-3xl sm:text-4xl leading-tight text-balance text-foreground"
           >
             One chapter at a time
           </h2>
         </div>
 
-        <Link
-          href="/stories"
-          className="w-fit inline-flex items-center gap-1.5 text-sm font-medium text-accent transition-opacity hover:opacity-70 group"
-        >
-          View all stories
-          <ArrowRightIcon
-            aria-hidden="true"
-            className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1 motion-reduce:transition-none"
-          />
-        </Link>
+        <ViewAllLink href="/stories" label="View all stories" />
       </div>
 
       <FeaturedStoryCard story={featured} />

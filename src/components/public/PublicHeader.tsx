@@ -11,8 +11,8 @@ import ThemeToggle from "@/components/shared/ThemeToggle";
 import { mainNav, SITE_NAME } from "@/lib/site";
 
 // Named by WHERE they're used, so they never get swapped again
-import logoForLightTheme from "@/assets/Dark_Logo.png";
-import logoForDarkTheme from "@/assets/White_Logo.png";
+import logoForLightTheme from "@/assets/Logo_white_new.png";
+import logoForDarkTheme from "@/assets/Logo_dark_new.png";
 
 const SCROLL_THRESHOLD = 24;
 
@@ -53,20 +53,24 @@ export default function PublicHeader() {
         <Link
           href="/"
           aria-label={`${SITE_NAME} home`}
-          className="flex items-center shrink-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="w-52 h-14 relative shrink-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
-          {/* Logo follows the THEME only, never the scroll */}
-          <Image
-            src={logoForDarkTheme}
-            alt=""
-            priority
-            className="h-8 w-auto block dark:hidden"
-          />
           <Image
             src={logoForLightTheme}
             alt=""
+            fill
             priority
-            className="h-8 w-auto hidden dark:block"
+            sizes="208px"
+            className="object-contain object-left dark:hidden"
+          />
+
+          <Image
+            src={logoForDarkTheme}
+            alt=""
+            fill
+            priority
+            sizes="208px"
+            className="hidden object-contain object-left dark:block"
           />
         </Link>
 

@@ -13,6 +13,7 @@ import RecommendedBlogs from "./RecommendedBlogs";
 import TableOfContents, { type TocItem } from "./TableOfContent";
 
 type BlogSection = Blog["content"][number];
+type SectionImage = NonNullable<BlogSection["image"]>;
 
 type ArticleSection = BlogSection & {
   id?: string;
@@ -29,6 +30,8 @@ const blockClass = "w-full min-w-0 max-w-3xl mx-auto xl:max-w-none xl:mx-0";
 
 const chipClass =
   "px-3 py-1.5 inline-flex text-xs bg-linear-to-br from-surface to-surface-muted border border-border rounded-lg";
+
+const SECTION_IMAGE_SIZES = "(min-width: 768px) 768px, 100vw";
 
 function slugify(text: string): string {
   return text
@@ -61,6 +64,43 @@ function buildToc(sections: ArticleSection[]): TocItem[] {
     section.id && section.heading
       ? [{ id: section.id, heading: section.heading }]
       : [],
+  );
+}
+
+/* Shows the image at its real shape when the size is known, a calm crop otherwise */
+function SectionFigure({ image }: { image: SectionImage }) {
+  return (
+    <figure className="flex flex-col gap-3">
+      {image.width && image.height ? (
+        <Image
+          src={image.url}
+          alt={image.alt}
+          width={image.width}
+          height={image.height}
+          sizes={SECTION_IMAGE_SIZES}
+          className="w-full h-auto bg-surface-muted rounded-lg"
+        />
+      ) : (
+        <div className="w-full aspect-16/10 bg-surface-muted rounded-lg relative overflow-hidden">
+          <Image
+            src={image.url}
+            alt={image.alt}
+            fill
+            sizes={SECTION_IMAGE_SIZES}
+            className="object-cover"
+          />
+        </div>
+      )}
+
+      {image.caption && (
+        <figcaption
+          lang={textLang(image.caption)}
+          className="text-sm leading-6 text-center text-pretty text-muted"
+        >
+          {image.caption}
+        </figcaption>
+      )}
+    </figure>
   );
 }
 
@@ -188,6 +228,8 @@ export default function BlogArticle({
                   {paragraph}
                 </p>
               ))}
+
+              {section.image && <SectionFigure image={section.image} />}
 
               {section.quote && (
                 <blockquote className="p-5 sm:p-6 bg-linear-to-br from-surface to-surface-muted border-l-4 border-accent rounded-lg">

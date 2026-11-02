@@ -5,9 +5,16 @@ import { ArrowLeftIcon, ArrowRightIcon } from "@heroicons/react/20/solid";
 import { pluralize } from "@/lib/admin/format";
 import { PROGRESS_LABEL } from "@/lib/content/story";
 import { textLang } from "@/lib/content/script";
-import { getReadTimeMinutes } from "@/lib/content/text";
+import {
+  countWords,
+  getReadTimeMinutes,
+  splitParagraphs,
+} from "@/lib/content/text";
 import { formatDate } from "@/lib/formatDate";
 import type { ChapterListItem, StoryDetail } from "@/lib/story/types";
+
+// Longer than this and the header shows a teaser, with the rest in its own section
+const SYNOPSIS_TEASER_WORDS = 80;
 
 interface StoryOverviewProps {
   story: StoryDetail;
@@ -20,6 +27,11 @@ export default function StoryOverview({ story, chapters }: StoryOverviewProps) {
   const updated = formatDate(story.updatedAt);
   const totalMinutes = getReadTimeMinutes(story.wordCount);
   const chapterPath = (number: number) => `/stories/${story.slug}/${number}`;
+
+  const synopsis = splitParagraphs(story.blurb);
+  const hasLongSynopsis =
+    synopsis.length > 1 || countWords(story.blurb) > SYNOPSIS_TEASER_WORDS;
+  const teaser = hasLongSynopsis ? (synopsis[0] ?? "") : story.blurb;
 
   return (
     <article className="w-full max-w-7xl 2xl:max-w-360 px-4 pt-28 pb-16 sm:px-6 sm:pt-32 sm:pb-20 lg:px-8 mx-auto flex flex-col gap-14 sm:gap-16">
@@ -90,12 +102,25 @@ export default function StoryOverview({ story, chapters }: StoryOverviewProps) {
             </span>
           </div>
 
-          <p
-            lang={textLang(story.blurb)}
-            className="max-w-2xl text-base sm:text-lg leading-7 sm:leading-8 whitespace-pre-line text-pretty text-muted"
-          >
-            {story.blurb}
-          </p>
+          <div className="max-w-2xl flex flex-col gap-2">
+            <p
+              lang={textLang(teaser)}
+              className={`text-base sm:text-lg leading-7 sm:leading-8 whitespace-pre-line text-pretty text-muted ${
+                hasLongSynopsis ? "line-clamp-4" : ""
+              }`}
+            >
+              {teaser}
+            </p>
+
+            {hasLongSynopsis && (
+              <a
+                href="#synopsis-heading"
+                className="w-fit text-sm font-medium text-accent underline underline-offset-4 rounded-sm transition-colors hover:text-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                Read the full synopsis
+              </a>
+            )}
+          </div>
 
           {story.tags.length > 0 && (
             <ul className="flex flex-wrap gap-2">
@@ -141,6 +166,30 @@ export default function StoryOverview({ story, chapters }: StoryOverviewProps) {
           )}
         </div>
       </header>
+
+      {hasLongSynopsis && (
+        <section
+          aria-labelledby="synopsis-heading"
+          className="w-full max-w-3xl flex flex-col gap-5"
+        >
+          <h2
+            id="synopsis-heading"
+            className="font-serif text-2xl sm:text-3xl text-foreground scroll-mt-24"
+          >
+            Synopsis
+          </h2>
+
+          {synopsis.map((paragraph, index) => (
+            <p
+              key={index}
+              lang={textLang(paragraph)}
+              className="text-base sm:text-lg leading-7 hi:leading-8 sm:leading-8 sm:hi:leading-9 whitespace-pre-line text-pretty text-foreground/85"
+            >
+              {paragraph}
+            </p>
+          ))}
+        </section>
+      )}
 
       {chapters.length > 0 && (
         <section

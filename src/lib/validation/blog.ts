@@ -7,8 +7,9 @@ export const BLOG_LIMITS = {
   heading: 150,
   body: 20000,
   quote: 500,
+  caption: 300,
   tags: 10,
-  tagName: 40,
+  tagName: 100,
   recommendations: 3,
 } as const;
 
@@ -16,6 +17,10 @@ export const optionalIdSchema = z
   .union([z.literal(""), z.uuid()])
   .transform((value) => value || null);
 
+/*
+ * imageId and caption default to empty, so other editors that share
+ * this shape (like the About page) keep working without sending them
+ */
 export const sectionDraftSchema = z.object({
   heading: z
     .string()
@@ -34,6 +39,15 @@ export const sectionDraftSchema = z.object({
       BLOG_LIMITS.quote,
       `Keep quotes under ${BLOG_LIMITS.quote} characters`,
     ),
+  imageId: z.union([z.literal(""), z.uuid()]).default(""),
+  caption: z
+    .string()
+    .trim()
+    .max(
+      BLOG_LIMITS.caption,
+      `Keep captions under ${BLOG_LIMITS.caption} characters`,
+    )
+    .default(""),
 });
 
 export const contentStatusSchema = z.enum(["draft", "published", "scheduled"]);

@@ -7,9 +7,18 @@ export const MEDIA_PAGE_SIZE = 24;
 
 export type MediaWithUsage = MediaRow & { usage_count: number };
 export type NewMedia = Omit<MediaRow, "id" | "created_at">;
+export type ContentMedia = Pick<
+  MediaRow,
+  "id" | "url" | "alt_text" | "width" | "height"
+>;
 
+/*
+ * Covers and avatars are protected by the database. Images inside blog
+ * content live in JSON, so they're counted here by matching the media id.
+ */
 const USAGE_SQL = `(
   (select count(*) from blogs b where b.cover_media_id = media.id)
+  + (select count(*) from blogs b where b.content @> jsonb_build_array(jsonb_build_object('image', jsonb_build_object('mediaId', media.id::text))))
   + (select count(*) from stories s where s.cover_media_id = media.id)
   + (select count(*) from authors a where a.avatar_media_id = media.id)
 )::int as usage_count`;
@@ -61,6 +70,19 @@ export async function getMediaById(
     .select("media.*", db.raw(USAGE_SQL))
     .where("media.id", id)
     .first();
+}
+
+/* Real links and sizes for images picked inside blog content */
+export async function getMediaForContent(
+  ids: string[],
+): Promise<ContentMedia[]> {
+  if (ids.length === 0) {
+    return [];
+  }
+
+  return db<MediaRow>("media")
+    .select("id", "url", "alt_text", "width", "height")
+    .whereIn("id", ids);
 }
 
 export async function insertMedia(input: NewMedia): Promise<MediaRow> {

@@ -2,6 +2,7 @@ export type UserRole = "admin" | "reader";
 export type ContentStatus = "draft" | "published" | "scheduled";
 export type StoryProgress = "ongoing" | "completed" | "hiatus";
 export type SubscriberStatus = "subscribed" | "unsubscribed";
+export type QuoteLang = "hi" | "en";
 export type SocialPlatform =
   | "instagram"
   | "x"
@@ -12,10 +13,21 @@ export type SocialPlatform =
   | "whatsapp"
   | "website";
 
+/* An image inside a blog section. Link and size are copied from the media library on save */
+export interface BlogSectionImage {
+  mediaId: string;
+  url: string;
+  alt: string;
+  width?: number;
+  height?: number;
+  caption?: string;
+}
+
 export interface BlogSection {
   heading?: string;
   paragraphs: string[];
   quote?: string;
+  image?: BlogSectionImage;
 }
 
 interface Timestamps {
@@ -152,6 +164,19 @@ export interface ChapterRow extends Timestamps {
   word_count: number;
   status: ContentStatus;
   published_at: Date | null;
+}
+
+/* Empty strings mean no translation or no author */
+export interface QuoteRow extends Timestamps {
+  id: string;
+  text: string;
+  lang: QuoteLang;
+  translation: string;
+  author: string;
+  status: ContentStatus;
+  published_at: Date | null;
+  is_featured: boolean;
+  created_by: string | null;
 }
 
 export interface CommentRow extends Timestamps {

@@ -1,5 +1,6 @@
 import {
   BookOpenIcon,
+  ChatBubbleBottomCenterTextIcon,
   ChatBubbleLeftRightIcon,
   DocumentTextIcon,
   EnvelopeIcon,
@@ -23,6 +24,11 @@ export const adminNav = [
   { label: "Dashboard", href: "/admin", Icon: Squares2X2Icon },
   { label: "Blogs", href: "/admin/blogs", Icon: DocumentTextIcon },
   { label: "Stories", href: "/admin/stories", Icon: BookOpenIcon },
+  {
+    label: "Quotes",
+    href: "/admin/quotes",
+    Icon: ChatBubbleBottomCenterTextIcon,
+  },
   { label: "Categories", href: "/admin/categories", Icon: FolderIcon },
   { label: "Tags", href: "/admin/tags", Icon: TagIcon },
   { label: "Media", href: "/admin/media", Icon: PhotoIcon },

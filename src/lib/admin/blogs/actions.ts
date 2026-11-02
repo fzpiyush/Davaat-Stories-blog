@@ -16,7 +16,7 @@ import {
   resolveSlug,
   type RuleResult,
 } from "@/lib/admin/contentRules";
-import { toBlogSections } from "@/lib/admin/editor";
+import { toBlogSections, type SectionDraft } from "@/lib/admin/editor";
 import { formatAdminDateTime } from "@/lib/admin/format";
 import { readFormText } from "@/lib/admin/forms";
 import { requireAdmin } from "@/lib/auth/session";
@@ -32,6 +32,7 @@ import {
   isForeignKeyViolation,
   isUniqueViolation,
 } from "@/lib/db/errors";
+import { getMediaForContent } from "@/lib/db/media";
 import { blogFormSchema } from "@/lib/validation/blog";
 import { idSchema, validationErrorState } from "@/lib/validation/shared";
 
@@ -90,7 +91,42 @@ export async function saveBlog(
   }
 
   const form = parsed.data;
-  const content = toBlogSections(form.content);
+
+  /*
+   * The browser only sends image ids. The real link and size come from
+   * the media library, so an outside link can never sneak into a post.
+   */
+  const imageIds = [
+    ...new Set(form.content.map((section) => section.imageId).filter(Boolean)),
+  ];
+  const mediaRows = await getMediaForContent(imageIds);
+  const mediaById = new Map(mediaRows.map((media) => [media.id, media]));
+
+  const missingImageIndex = form.content.findIndex(
+    (section) => section.imageId && !mediaById.has(section.imageId),
+  );
+
+  const drafts: SectionDraft[] = form.content.map((section) => {
+    const media = section.imageId ? mediaById.get(section.imageId) : undefined;
+
+    return {
+      heading: section.heading,
+      body: section.body,
+      quote: section.quote,
+      caption: section.caption,
+      image: media
+        ? {
+            id: media.id,
+            url: media.url,
+            alt: media.alt_text,
+            width: media.width,
+            height: media.height,
+          }
+        : null,
+    };
+  });
+
+  const content = toBlogSections(drafts);
 
   // Existing posts keep their slug, it never regenerates by itself
   const slug: RuleResult<string> =
@@ -101,6 +137,12 @@ export async function saveBlog(
   const tagNames = normalizeTagNames(form.tags);
 
   const fieldErrors: FieldErrors = collectErrors(slug, publishedAt, tagNames);
+
+  if (missingImageIndex >= 0) {
+    fieldErrors.content = [
+      `The image in section ${missingImageIndex + 1} was deleted from the library. Pick another one.`,
+    ];
+  }
 
   if (form.status !== "draft") {
     if (!form.excerpt) {
@@ -115,7 +157,10 @@ export async function saveBlog(
       fieldErrors.categoryId = ["Pick a category before publishing"];
     }
 
-    if (!content.some((section) => section.paragraphs.length > 0)) {
+    if (
+      !fieldErrors.content &&
+      !content.some((section) => section.paragraphs.length > 0)
+    ) {
       fieldErrors.content = ["Write at least one paragraph before publishing"];
     }
   }

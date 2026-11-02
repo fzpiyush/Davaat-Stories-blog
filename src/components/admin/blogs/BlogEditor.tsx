@@ -149,10 +149,17 @@ export default function BlogEditor({
   const shownSlug = slugTouched ? slug : slugify(title);
   const wasPublished = !isNew && initial.status === "published";
 
+  // Only the image id travels, the server looks up the real link and size
   const contentJson = useMemo(
     () =>
       JSON.stringify(
-        sections.map(({ heading, body, quote }) => ({ heading, body, quote })),
+        sections.map(({ heading, body, quote, image, caption }) => ({
+          heading,
+          body,
+          quote,
+          imageId: image?.id ?? "",
+          caption: image ? (caption ?? "") : "",
+        })),
       ),
     [sections],
   );
@@ -311,6 +318,7 @@ export default function BlogEditor({
             wordCount={wordCount}
             readTimeMinutes={readTimeMinutes}
             errors={errors.content}
+            allowImages
           />
 
           <input type="hidden" name="content" value={contentJson} />

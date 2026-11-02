@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { countWords } from "@/lib/content/text";
 import {
   contentStatusSchema,
   optionalIdSchema,
@@ -8,7 +9,9 @@ import {
 
 export const STORY_LIMITS = {
   title: 150,
-  blurb: 600,
+  blurbWords: 1000,
+  // A safety net on raw size, far above what 1,000 words needs
+  blurbChars: 10000,
   chapterTitle: 150,
   chapterBody: 100000,
 } as const;
@@ -29,12 +32,18 @@ export const storyFormSchema = z.object({
     .trim()
     .toLowerCase()
     .max(120, "Keep the slug under 120 characters"),
+  // Keeps line breaks so the synopsis can have paragraphs
   blurb: z
     .string()
-    .trim()
-    .max(
-      STORY_LIMITS.blurb,
-      `Keep the blurb under ${STORY_LIMITS.blurb} characters`,
+    .transform((value) => value.replace(/\r\n?/g, "\n").trim())
+    .pipe(
+      z
+        .string()
+        .max(STORY_LIMITS.blurbChars, "This synopsis is too long")
+        .refine(
+          (value) => countWords(value) <= STORY_LIMITS.blurbWords,
+          `Keep the synopsis under ${STORY_LIMITS.blurbWords} words`,
+        ),
     ),
   coverMediaId: optionalIdSchema,
   categoryId: optionalIdSchema,

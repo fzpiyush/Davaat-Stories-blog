@@ -4,8 +4,8 @@ import { notFound } from "next/navigation";
 import BlogCard from "@/components/blog/BlogCard";
 import BlogEmptyState from "@/components/blog/BlogEmptyState";
 import ListFilters from "@/components/public/ListFilters";
-import PageHero from "@/components/public/PageHero";
 import PublicPagination from "@/components/public/PublicPagination";
+import TextHero from "@/components/public/TextHero";
 import { parsePage, parseQuery } from "@/lib/admin/params";
 import {
   BLOGS_PER_PAGE,
@@ -13,7 +13,6 @@ import {
   getBlogsPage,
 } from "@/lib/blog/queries";
 import { parseSlug, type SearchParamValue } from "@/lib/content/filters";
-import { blogsHeroArt } from "@/lib/content/heroArt";
 import { pageBackgroundClass } from "@/lib/content/pageBackground";
 import { SITE_NAME } from "@/lib/site";
 
@@ -57,18 +56,16 @@ export default async function BlogsPage({ searchParams }: BlogsPageProps) {
       aria-labelledby="blogs-heading"
       className={`w-full min-h-screen flex flex-col ${pageBackgroundClass}`}
     >
-      <PageHero
+      <TextHero
         id="blogs-heading"
         eyebrow="The blog"
         title="Thoughts, stories and lessons along the way."
         description="Everything I write about technology, life, and the small things that make days better."
         countLabel={`${total} ${total === 1 ? "post" : "posts"}${hasFilters ? " found" : ""}`}
-        art={blogsHeroArt}
-        tone="blue"
       />
 
-      <div className="w-full max-w-7xl 2xl:max-w-360 px-4 py-10 sm:px-6 sm:py-14 lg:px-8 lg:pb-24 mx-auto flex flex-col gap-10 sm:gap-12">
-        <div className="p-4 sm:p-5 bg-linear-to-br from-surface to-surface-muted border border-border rounded-lg">
+      <div className="w-full max-w-7xl 2xl:max-w-360 px-4 pt-10 pb-16 sm:px-6 sm:pt-14 lg:px-8 lg:pb-24 mx-auto flex flex-col gap-10 sm:gap-12">
+        <div className="p-4 sm:p-5 bg-surface border border-border rounded-lg">
           <ListFilters
             id="blogs-filter"
             action="/blogs"

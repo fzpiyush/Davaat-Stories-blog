@@ -4,7 +4,6 @@ import Link from "next/link";
 import { ArrowRightIcon } from "@heroicons/react/20/solid";
 
 import BlogCard from "@/components/blog/BlogCard";
-import ThemedArt, { type ThemedArtSet } from "@/components/shared/ThemedArt";
 import { socialIcons } from "@/components/shared/socialIcons";
 import StoryCard from "@/components/story/StoryCard";
 import { getPublicAbout, getSiteStats } from "@/lib/about/queries";
@@ -15,19 +14,7 @@ import { splitParagraphs } from "@/lib/content/text";
 import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/site";
 import { getLatestStories } from "@/lib/story/queries";
 
-import aboutDay from "@/assets/About.png";
-import aboutDayPhone from "@/assets/About_Mobile.png";
-import aboutNightPhone from "@/assets/About_Mobile_Night.png";
-import aboutNight from "@/assets/About_Night.png";
-
 export const revalidate = 60;
-
-const ABOUT_ART: ThemedArtSet = {
-  day: aboutDay,
-  night: aboutNight,
-  dayPhone: aboutDayPhone,
-  nightPhone: aboutNightPhone,
-};
 
 const LATEST_BLOGS = 3;
 const LATEST_STORIES = 4;
@@ -133,28 +120,27 @@ export default async function AboutPage() {
     ...(stats.since ? [{ label: "Writing since", value: stats.since }] : []),
   ];
 
+  // Four stats sit in one row on wider screens, three stay evenly spaced
+  const statColumnsClass =
+    statItems.length === 4 ? "sm:grid-cols-4" : "sm:grid-cols-3";
+
   return (
     <>
       <section
         aria-labelledby="about-heading"
         className={`w-full ${pageBackgroundClass} relative isolate overflow-hidden`}
       >
-        <div
+        {/* A giant faint initial behind the name, like a watermark on paper */}
+        <span
           aria-hidden="true"
-          className="absolute inset-0 -z-10 mask-[linear-gradient(to_bottom,black_60%,transparent_100%)]"
+          className="font-serif text-[18rem] sm:text-[26rem] leading-none text-foreground/4 absolute top-10 left-1/2 -translate-x-1/2 -z-10 select-none pointer-events-none"
         >
-          <ThemedArt
-            art={ABOUT_ART}
-            imageClassName="object-cover object-top md:object-center"
-          />
+          {initial}
+        </span>
 
-          {/* Blue ink mist right behind the text, fading into the painting */}
-          <div className="bg-radial-[ellipse_at_50%_32%] from-wash/85 via-wash/40 via-35% to-transparent to-65% absolute inset-0" />
-        </div>
-
-        <div className="w-full max-w-3xl min-h-[min(125vw,52rem)] md:min-h-[min(56vw,48rem)] px-4 pt-28 pb-24 sm:px-6 sm:pt-32 mx-auto flex flex-col items-center gap-5 text-center">
+        <div className="w-full max-w-3xl px-4 pt-32 pb-16 sm:px-6 sm:pt-40 sm:pb-20 mx-auto flex flex-col items-center gap-5 text-center">
           {author?.avatarUrl ? (
-            <div className="w-24 sm:w-28 h-24 sm:h-28 shrink-0 bg-surface-muted shadow-md rounded-full ring-4 ring-surface relative overflow-hidden">
+            <div className="w-24 sm:w-28 h-24 sm:h-28 shrink-0 bg-surface-muted rounded-full ring-1 ring-border ring-offset-4 ring-offset-background relative overflow-hidden">
               <Image
                 src={author.avatarUrl}
                 alt=""
@@ -167,13 +153,13 @@ export default async function AboutPage() {
           ) : (
             <div
               aria-hidden="true"
-              className="w-24 sm:w-28 h-24 sm:h-28 shrink-0 flex items-center justify-center font-serif text-5xl text-accent bg-surface shadow-md rounded-full ring-4 ring-surface"
+              className="w-24 sm:w-28 h-24 sm:h-28 shrink-0 flex items-center justify-center font-serif text-5xl text-accent bg-surface rounded-full ring-1 ring-border ring-offset-4 ring-offset-background"
             >
               {initial}
             </div>
           )}
 
-          <p className={eyebrowClass}>
+          <p className={`pt-3 ${eyebrowClass}`}>
             <span
               aria-hidden="true"
               className="w-1.5 h-1.5 bg-highlight rounded-full"
@@ -194,6 +180,10 @@ export default async function AboutPage() {
             </p>
           )}
 
+          <div className="pt-2">
+            <InkDivider />
+          </div>
+
           {links.length > 0 && (
             <ul
               aria-label="Find me elsewhere"
@@ -208,7 +198,7 @@ export default async function AboutPage() {
                       href={link.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-3.5 py-2 inline-flex items-center gap-2 text-sm text-foreground bg-surface/80 border border-border rounded-full backdrop-blur-sm transition-colors hover:text-accent-foreground hover:bg-accent hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                      className="px-3.5 py-2 inline-flex items-center gap-2 text-sm text-foreground bg-surface border border-border rounded-full transition-colors hover:text-accent-foreground hover:bg-accent hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                     >
                       <Icon aria-hidden="true" className="w-3.5 h-3.5" />
                       {link.label}
@@ -247,11 +237,14 @@ export default async function AboutPage() {
           aria-label="At a glance"
           className="w-full max-w-4xl px-4 sm:px-6 mx-auto"
         >
-          <dl className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+          {/* One joined panel, the 1px gaps show the border color as hairline dividers */}
+          <dl
+            className={`grid grid-cols-2 ${statColumnsClass} gap-px bg-border border border-border rounded-2xl overflow-hidden`}
+          >
             {statItems.map((item) => (
               <div
                 key={item.label}
-                className="p-5 flex flex-col-reverse items-center gap-1 text-center bg-surface border border-border rounded-xl"
+                className="px-4 py-7 sm:py-9 flex flex-col-reverse items-center gap-1.5 text-center bg-surface odd:last:col-span-2 sm:odd:last:col-span-1"
               >
                 <dt className="text-xs font-medium uppercase tracking-[0.15em] text-muted">
                   {item.label}
@@ -265,7 +258,7 @@ export default async function AboutPage() {
         </section>
 
         {about.sections.length > 0 && (
-          <div className="w-full max-w-3xl px-4 sm:px-6 mx-auto flex flex-col gap-12">
+          <div className="w-full max-w-3xl px-4 sm:px-6 mx-auto flex flex-col gap-14">
             <InkDivider />
 
             {about.sections.map((section, index) => (
@@ -286,8 +279,8 @@ export default async function AboutPage() {
                 ))}
 
                 {section.quote && (
-                  <blockquote className="p-5 sm:p-6 bg-surface-muted border-l-4 border-accent rounded-r-lg">
-                    <p className="font-serif text-lg sm:text-xl italic leading-8 text-foreground">
+                  <blockquote className="my-2 py-1 pl-6 border-l-2 border-accent">
+                    <p className="font-serif text-xl sm:text-2xl italic leading-9 sm:leading-10 text-pretty text-foreground">
                       “{section.quote}”
                     </p>
                   </blockquote>

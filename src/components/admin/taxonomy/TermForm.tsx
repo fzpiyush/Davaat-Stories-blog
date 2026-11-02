@@ -9,6 +9,7 @@ import { initialActionState, type ActionState } from "@/lib/admin/actionState";
 import { getFieldA11y } from "@/lib/admin/forms";
 import { TAXONOMY, type TaxonomyKind } from "@/lib/admin/taxonomy/config";
 import { cardClass, inputClass, textareaClass } from "@/lib/admin/ui";
+import { TERM_LIMITS } from "@/lib/validation/taxonomy";
 
 export type TermFormValues = {
   name: string;
@@ -58,7 +59,7 @@ export default function TermForm({
           name="name"
           type="text"
           required
-          maxLength={60}
+          maxLength={TERM_LIMITS.name}
           autoComplete="off"
           defaultValue={values.name}
           placeholder={config.namePlaceholder}
@@ -77,7 +78,7 @@ export default function TermForm({
           {...getFieldA11y(slugId, errors.slug, SLUG_HINT)}
           name="slug"
           type="text"
-          maxLength={120}
+          maxLength={TERM_LIMITS.slug}
           autoComplete="off"
           defaultValue={values.slug}
           placeholder={config.namePlaceholder.toLowerCase()}
@@ -96,7 +97,7 @@ export default function TermForm({
             {...getFieldA11y(descriptionId, errors.description)}
             name="description"
             rows={3}
-            maxLength={300}
+            maxLength={TERM_LIMITS.description}
             defaultValue={values.description}
             placeholder={`What belongs in this ${config.singular}?`}
             className={textareaClass}

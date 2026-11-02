@@ -3,10 +3,10 @@ import { ArrowRightIcon } from "@heroicons/react/20/solid";
 
 import ThemedArt, { type ThemedArtSet } from "@/components/shared/ThemedArt";
 
-import heroDay from "@/assets/Hero_davaat.png";
-import heroNight from "@/assets/Hero_davaat_night.png";
-import heroDayPhone from "@/assets/Hero_mobile.png";
-import heroNightPhone from "@/assets/Hero_mobile_night.png";
+import heroDay from "@/assets/Watercolour Lake Scene with Writing Desk.png";
+import heroNight from "@/assets/Watercolour Lake Scene with Writing Desk.png";
+import heroDayPhone from "@/assets/Misty Mountain Lake Writing Nook.png";
+import heroNightPhone from "@/assets/Misty Mountain Lake Writing Nook.png";
 
 const HERO_ART: ThemedArtSet = {
   day: heroDay,
@@ -28,19 +28,14 @@ export default function HomeHero() {
           imageClassName="object-cover object-top lg:object-[70%_center]"
         />
 
-        {/* Blue ink mist behind the text, from the top on phones and from the left on wide screens */}
-        <div className="bg-linear-to-b from-wash/80 via-wash/30 via-40% to-transparent to-60% absolute inset-0 lg:bg-linear-to-r lg:from-wash/75 lg:via-wash/30 lg:via-35% lg:to-transparent lg:to-55%" />
+        {/* Ink mist behind the text, from the top on phones and tablets and from the left on wide screens */}
+        <div className="bg-linear-to-b from-wash/90 via-wash/70 via-45% to-transparent to-75% absolute inset-0 lg:bg-linear-to-r lg:from-wash/75 lg:via-wash/30 lg:via-35% lg:to-transparent lg:to-55%" />
 
         <div className="h-24 bg-linear-to-t from-background to-transparent absolute inset-x-0 bottom-0" />
       </div>
 
       <div className="w-full max-w-7xl 2xl:max-w-360 min-h-[min(125vw,56rem)] lg:min-h-[min(calc(100svh-4rem),720px)] px-4 pt-28 pb-16 sm:px-6 sm:pt-32 lg:px-8 lg:py-24 mx-auto flex items-start lg:items-center">
         <div className="max-w-xl lg:max-w-lg xl:max-w-xl flex flex-col gap-5 sm:gap-6">
-          <p className="flex items-center gap-3 text-xs font-medium uppercase tracking-[0.3em] text-accent">
-            <span aria-hidden="true" className="w-8 h-px bg-accent" />
-            Blogs &amp; Stories
-          </p>
-
           <h1
             id="home-hero-heading"
             className="font-serif text-4xl sm:text-5xl lg:text-6xl xl:text-7xl leading-[1.08] tracking-tight text-balance text-foreground"
@@ -48,7 +43,7 @@ export default function HomeHero() {
             A quiet space for curious minds and better days.
           </h1>
 
-          <p className="max-w-md text-base sm:text-lg leading-7 sm:leading-8 text-pretty text-foreground/85">
+          <p className="max-w-md text-base sm:text-lg leading-7 sm:leading-8 text-pretty text-foreground lg:text-foreground/85">
             Thoughts, experiences, and stories about technology, life, and
             everything in between, written one drop of ink at a time.
           </p>

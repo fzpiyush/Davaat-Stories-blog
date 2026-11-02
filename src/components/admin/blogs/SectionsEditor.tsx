@@ -1,27 +1,37 @@
 "use client";
 
-import { useId } from "react";
+import Image from "next/image";
+import { useId, useState } from "react";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
   ExclamationCircleIcon,
+  PhotoIcon,
   PlusIcon,
   TrashIcon,
 } from "@heroicons/react/20/solid";
 
+import MediaPickerDialog from "@/components/admin/media/MediaPickerDialog";
 import { pluralize } from "@/lib/admin/format";
-import { EMPTY_SECTION, type SectionDraft } from "@/lib/admin/editor";
+import {
+  EMPTY_SECTION,
+  type SectionDraft,
+  type SectionImageValue,
+} from "@/lib/admin/editor";
 import {
   buttonClass,
   cardClass,
   iconButtonClass,
   inputClass,
+  smallButtonClass,
   textareaClass,
 } from "@/lib/admin/ui";
 import { countWords } from "@/lib/content/text";
 import { BLOG_LIMITS } from "@/lib/validation/blog";
 
 export type KeyedSection = SectionDraft & { key: string };
+
+type TextField = "heading" | "body" | "quote" | "caption";
 
 const BODY_HINT = "Leave an empty line between paragraphs.";
 
@@ -39,6 +49,8 @@ interface SectionsEditorProps {
   wordCount: number;
   readTimeMinutes: number;
   errors?: string[];
+  /** Shows an image picker in every section */
+  allowImages?: boolean;
 }
 
 export default function SectionsEditor({
@@ -47,15 +59,29 @@ export default function SectionsEditor({
   wordCount,
   readTimeMinutes,
   errors,
+  allowImages = false,
 }: SectionsEditorProps) {
   const baseId = useId();
   const headingId = `${baseId}-heading`;
   const error = errors?.[0];
 
-  function update(index: number, field: keyof SectionDraft, text: string) {
+  // The section waiting for an image, by key so reordering can't mix them up
+  const [pickingKey, setPickingKey] = useState<string | null>(null);
+
+  function update(index: number, field: TextField, text: string) {
     onChange(
       sections.map((section, position) =>
         position === index ? { ...section, [field]: text } : section,
+      ),
+    );
+  }
+
+  function setImage(key: string, image: SectionImageValue | null) {
+    onChange(
+      sections.map((section) =>
+        section.key === key
+          ? { ...section, image, caption: image ? section.caption : "" }
+          : section,
       ),
     );
   }
@@ -66,9 +92,11 @@ export default function SectionsEditor({
 
   function remove(index: number) {
     const section = sections[index];
-    const hasText = Boolean(section.heading || section.body || section.quote);
+    const hasContent = Boolean(
+      section.heading || section.body || section.quote || section.image,
+    );
 
-    if (hasText && !window.confirm(`Remove section ${index + 1}?`)) {
+    if (hasContent && !window.confirm(`Remove section ${index + 1}?`)) {
       return;
     }
 
@@ -218,6 +246,76 @@ export default function SectionsEditor({
                 </p>
               </div>
 
+              {allowImages && (
+                <div className="flex flex-col gap-3">
+                  <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    Image
+                    <span className="text-xs font-normal text-muted">
+                      Optional, shows below the paragraphs
+                    </span>
+                  </p>
+
+                  {section.image && (
+                    <div className="w-full max-w-sm aspect-16/10 bg-surface-muted rounded-lg relative overflow-hidden ring-1 ring-border">
+                      <Image
+                        src={section.image.url}
+                        alt={section.image.alt}
+                        fill
+                        sizes="384px"
+                        className="object-cover"
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPickingKey(section.key)}
+                      className={smallButtonClass.secondary}
+                    >
+                      <PhotoIcon aria-hidden="true" className="w-4 h-4" />
+                      {section.image ? "Change image" : "Add image"}
+                    </button>
+
+                    {section.image && (
+                      <button
+                        type="button"
+                        onClick={() => setImage(section.key, null)}
+                        className={smallButtonClass.danger}
+                      >
+                        Remove image
+                      </button>
+                    )}
+                  </div>
+
+                  {section.image && (
+                    <div className="flex flex-col gap-2">
+                      <label
+                        htmlFor={`${fieldId}-caption`}
+                        className="flex items-center gap-2 text-sm font-medium text-foreground"
+                      >
+                        Caption
+                        <span className="text-xs font-normal text-muted">
+                          Optional
+                        </span>
+                      </label>
+
+                      <input
+                        id={`${fieldId}-caption`}
+                        type="text"
+                        value={section.caption ?? ""}
+                        maxLength={BLOG_LIMITS.caption}
+                        onChange={(event) =>
+                          update(index, "caption", event.target.value)
+                        }
+                        placeholder="A short line about the image"
+                        className={inputClass}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="flex flex-col gap-2">
                 <label
                   htmlFor={`${fieldId}-quote`}
@@ -257,6 +355,18 @@ export default function SectionsEditor({
           Add section
         </button>
       </div>
+
+      {pickingKey && (
+        <MediaPickerDialog
+          title="Section image"
+          preset="blogCover"
+          onSelect={(picked) => {
+            setImage(pickingKey, picked);
+            setPickingKey(null);
+          }}
+          onClose={() => setPickingKey(null)}
+        />
+      )}
     </section>
   );
 }

@@ -10,12 +10,14 @@ export const SITE_DESCRIPTION =
   "A quiet corner of the internet for blogs and stories about technology, life, and the small things that make days better.";
 
 export const mainNav = [
-  { label: "Blogs", href: "/blogs" },
   { label: "Stories", href: "/stories" },
-  { label: "About", href: "/about" },
+  { label: "Blogs", href: "/blogs" },
+  { label: "Quotes", href: "/quotes" },
 ] as const satisfies readonly NavItem[];
 
+// About lives here now, so it's still one click away from every page
 export const footerNav = [
   { label: "Home", href: "/" },
   ...mainNav,
+  { label: "About", href: "/about" },
 ] as const satisfies readonly NavItem[];

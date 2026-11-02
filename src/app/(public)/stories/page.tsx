@@ -4,12 +4,11 @@ import { notFound } from "next/navigation";
 
 import BlogEmptyState from "@/components/blog/BlogEmptyState";
 import ListFilters from "@/components/public/ListFilters";
-import PageHero from "@/components/public/PageHero";
 import PublicPagination from "@/components/public/PublicPagination";
+import TextHero from "@/components/public/TextHero";
 import StoryCard from "@/components/story/StoryCard";
 import { parsePage, parseQuery, parseChoice } from "@/lib/admin/params";
 import { parseSlug, type SearchParamValue } from "@/lib/content/filters";
-import { storiesHeroArt } from "@/lib/content/heroArt";
 import { pageBackgroundClass } from "@/lib/content/pageBackground";
 import { PROGRESS_LABEL } from "@/lib/content/story";
 import type { StoryProgress } from "@/lib/db/types";
@@ -30,7 +29,7 @@ const PROGRESS_OPTIONS = PROGRESS_VALUES.map((value) => ({
 }));
 
 const chipBase =
-  "px-3 py-1.5 text-xs font-medium bg-linear-to-br from-surface to-surface-muted border rounded-lg transition-colors duration-200 hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent";
+  "px-3.5 py-1.5 inline-flex text-xs font-medium bg-surface border rounded-full transition-colors duration-200 hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent";
 
 export const metadata: Metadata = {
   title: `Stories | ${SITE_NAME}`,
@@ -75,17 +74,18 @@ export default async function StoriesPage({ searchParams }: StoriesPageProps) {
       aria-labelledby="stories-heading"
       className={`w-full min-h-screen flex flex-col ${pageBackgroundClass}`}
     >
-      <PageHero
+      <TextHero
         id="stories-heading"
         eyebrow="Stories"
         title="Stories, told one chapter at a time."
         description="Settle in, pick a story, and follow along as new chapters arrive."
         countLabel={`${total} ${total === 1 ? "story" : "stories"}${hasFilters ? " found" : ""}`}
-        art={storiesHeroArt}
-        tone="gold"
       >
         <nav aria-label="Filter by progress">
-          <ul role="list" className="flex flex-wrap items-center gap-2">
+          <ul
+            role="list"
+            className="flex flex-wrap items-center justify-center gap-2"
+          >
             <li>
               <Link
                 href="/stories"
@@ -117,10 +117,10 @@ export default async function StoriesPage({ searchParams }: StoriesPageProps) {
             ))}
           </ul>
         </nav>
-      </PageHero>
+      </TextHero>
 
-      <div className="w-full max-w-7xl 2xl:max-w-360 px-4 py-10 sm:px-6 sm:py-14 lg:px-8 lg:pb-24 mx-auto flex flex-col gap-10 sm:gap-12">
-        <div className="p-4 sm:p-5 bg-linear-to-br from-surface to-surface-muted border border-border rounded-lg">
+      <div className="w-full max-w-7xl 2xl:max-w-360 px-4 pt-10 pb-16 sm:px-6 sm:pt-14 lg:px-8 lg:pb-24 mx-auto flex flex-col gap-10 sm:gap-12">
+        <div className="p-4 sm:p-5 bg-surface border border-border rounded-lg">
           <ListFilters
             id="stories-filter"
             action="/stories"

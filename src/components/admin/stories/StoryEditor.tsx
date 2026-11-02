@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useId, useState } from "react";
+import { useId, useMemo, useState } from "react";
 
 import CoverPicker from "@/components/admin/fields/CoverPicker";
-import PublishPanel, { type PublishValue } from "@/components/admin/fields/PublishPanel";
+import PublishPanel, {
+  type PublishValue,
+} from "@/components/admin/fields/PublishPanel";
 import TagInput from "@/components/admin/fields/TagInput";
 import FormField from "@/components/admin/ui/FormField";
 import FormStatus from "@/components/admin/ui/FormStatus";
@@ -21,6 +23,7 @@ import {
 } from "@/lib/admin/ui";
 import { useEditorForm } from "@/lib/admin/useEditorForm";
 import { STORY_PROGRESS_OPTIONS } from "@/lib/content/story";
+import { countWords } from "@/lib/content/text";
 import type { ContentStatus, StoryProgress } from "@/lib/db/types";
 import { slugify } from "@/lib/utils/slugify";
 import { BLOG_LIMITS } from "@/lib/validation/blog";
@@ -69,9 +72,12 @@ export default function StoryEditor({
     featured: initial.featured,
   });
 
+  const blurbWords = useMemo(() => countWords(blurb), [blurb]);
+
   const errors = state.fieldErrors ?? {};
   const shownSlug = slugTouched ? slug : slugify(title);
   const wasPublished = !isNew && initial.status === "published";
+  const isBlurbTooLong = blurbWords > STORY_LIMITS.blurbWords;
 
   function withDirty<T>(setter: (value: T) => void) {
     return (value: T) => {
@@ -89,7 +95,9 @@ export default function StoryEditor({
   const slugHint = isNew
     ? "Used in the link. Follows the title until you edit it."
     : "Changing this breaks old links to the story.";
-  const blurbHint = `${blurb.length}/${STORY_LIMITS.blurb}. The hook readers see on cards and the story page.`;
+  const blurbHint = isBlurbTooLong
+    ? `${blurbWords}/${STORY_LIMITS.blurbWords} words. A little too long, trim it before saving.`
+    : `${blurbWords}/${STORY_LIMITS.blurbWords} words. Leave an empty line between paragraphs. Cards show the first lines, the story page shows it all.`;
 
   return (
     <form
@@ -112,7 +120,12 @@ export default function StoryEditor({
           />
         </FormField>
 
-        <FormField id={slugId} label="Slug" hint={slugHint} errors={errors.slug}>
+        <FormField
+          id={slugId}
+          label="Slug"
+          hint={slugHint}
+          errors={errors.slug}
+        >
           <input
             {...getFieldA11y(slugId, errors.slug, slugHint)}
             name="slug"
@@ -129,20 +142,29 @@ export default function StoryEditor({
           />
         </FormField>
 
-        <FormField id={blurbId} label="Blurb" hint={blurbHint} errors={errors.blurb}>
+        <FormField
+          id={blurbId}
+          label="Synopsis"
+          hint={blurbHint}
+          errors={errors.blurb}
+        >
           <textarea
             {...getFieldA11y(blurbId, errors.blurb, blurbHint)}
             name="blurb"
-            rows={6}
+            rows={10}
             value={blurb}
-            maxLength={STORY_LIMITS.blurb}
+            maxLength={STORY_LIMITS.blurbChars}
             onChange={(event) => setBlurb(event.target.value)}
-            placeholder="A few lines that make someone want to start chapter one."
+            placeholder="The hook, the world, the people in it. Start with the line that makes someone want chapter one."
             className={textareaClass}
           />
         </FormField>
 
-        <FormField id={progressId} label="Story progress" errors={errors.progress}>
+        <FormField
+          id={progressId}
+          label="Story progress"
+          errors={errors.progress}
+        >
           <select
             {...getFieldA11y(progressId, errors.progress)}
             name="progress"
@@ -188,7 +210,11 @@ export default function StoryEditor({
         </div>
 
         <div className={cardClass}>
-          <FormField id={categoryId} label="Category" errors={errors.categoryId}>
+          <FormField
+            id={categoryId}
+            label="Category"
+            errors={errors.categoryId}
+          >
             <select
               {...getFieldA11y(categoryId, errors.categoryId)}
               name="categoryId"

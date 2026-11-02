@@ -11,8 +11,8 @@ import ThemeToggle from "@/components/shared/ThemeToggle";
 import { mainNav, SITE_NAME } from "@/lib/site";
 
 // Named by WHERE they're used, so they never get swapped again
-import logoForLightTheme from "@/assets/Logo_white_new.png";
-import logoForDarkTheme from "@/assets/Logo_dark_new.png";
+import logoForLightTheme from "@/assets/Elegant DAVAAT Ink Pot Logo.png";
+import logoForDarkTheme from "@/assets/DAVAAT Inkpot Logo with Gold Divider.png";
 
 const SCROLL_THRESHOLD = 24;
 
@@ -46,7 +46,7 @@ export default function PublicHeader() {
       className={`fixed top-0 left-0 z-30 w-full h-16 border-b text-foreground transition-[background-color,border-color,box-shadow] duration-300 ${
         isScrolled
           ? "bg-background/90 border-border shadow-sm backdrop-blur-md"
-          : "bg-wash/40 border-transparent backdrop-blur-md"
+          : "bg-background/60 border-transparent backdrop-blur-lg"
       }`}
     >
       <div className="w-full max-w-7xl 2xl:max-w-360 h-16 px-4 sm:px-6 lg:px-8 mx-auto flex items-center justify-between gap-4 sm:gap-6">

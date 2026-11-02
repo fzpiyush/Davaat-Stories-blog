@@ -1,0 +1,3782 @@
+
+===== src/lib/validation/story.ts =====
+
+import { z } from "zod";
+
+import {
+  contentStatusSchema,
+  optionalIdSchema,
+  tagNamesSchema,
+} from "@/lib/validation/blog";
+
+export const STORY_LIMITS = {
+  title: 150,
+  blurb: 600,
+  chapterTitle: 150,
+  chapterBody: 100000,
+} as const;
+
+export const storyProgressSchema = z.enum(["ongoing", "completed", "hiatus"]);
+
+export const storyFormSchema = z.object({
+  title: z
+    .string()
+    .trim()
+    .min(1, "Add a title")
+    .max(
+      STORY_LIMITS.title,
+      `Keep the title under ${STORY_LIMITS.title} characters`,
+    ),
+  slug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .max(120, "Keep the slug under 120 characters"),
+  blurb: z
+    .string()
+    .trim()
+    .max(
+      STORY_LIMITS.blurb,
+      `Keep the blurb under ${STORY_LIMITS.blurb} characters`,
+    ),
+  coverMediaId: optionalIdSchema,
+  categoryId: optionalIdSchema,
+  tags: tagNamesSchema,
+  progress: storyProgressSchema,
+  status: contentStatusSchema,
+  publishAt: z.string().trim(),
+  featured: z.boolean(),
+});
+
+export const chapterFormSchema = z.object({
+  title: z
+    .string()
+    .trim()
+    .min(1, "Add a chapter title")
+    .max(
+      STORY_LIMITS.chapterTitle,
+      `Keep the title under ${STORY_LIMITS.chapterTitle} characters`,
+    ),
+  content: z
+    .string()
+    .max(
+      STORY_LIMITS.chapterBody,
+      "This chapter is very long, try splitting it into two",
+    ),
+  status: contentStatusSchema,
+  publishAt: z.string().trim(),
+});
+
+===== src/lib/validation/taxonomy.ts =====
+
+import { z } from "zod";
+
+export const termFormSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "Add a name")
+    .max(60, "Keep the name under 60 characters"),
+  slug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .max(120, "Keep the slug under 120 characters"),
+  description: z
+    .string()
+    .trim()
+    .max(300, "Keep the description under 300 characters"),
+});
+
+===== src/lib/admin/stories/actions.ts =====
+
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+
+import {
+  errorState,
+  successState,
+  type ActionState,
+  type FieldErrors,
+} from "@/lib/admin/actionState";
+import {
+  collectErrors,
+  normalizeTagNames,
+  resolvePublishDate,
+  resolveSlug,
+  type RuleResult,
+} from "@/lib/admin/contentRules";
+import { formatAdminDateTime } from "@/lib/admin/format";
+import { readFormText } from "@/lib/admin/forms";
+import { requireAdmin } from "@/lib/auth/session";
+import { getAuthor } from "@/lib/db/authors";
+import {
+  getConstraintName,
+  isForeignKeyViolation,
+  isUniqueViolation,
+} from "@/lib/db/errors";
+import {
+  deleteStoryRecord,
+  saveStoryRecord,
+  StoryNotFoundError,
+} from "@/lib/db/stories";
+import { idSchema, validationErrorState } from "@/lib/validation/shared";
+import { storyFormSchema } from "@/lib/validation/story";
+
+const STORIES_PATH = "/admin/stories";
+const FIX_FIELDS = "Please fix the highlighted fields.";
+
+const TEXT_FIELDS = [
+  "title",
+  "slug",
+  "blurb",
+  "coverMediaId",
+  "categoryId",
+  "progress",
+  "status",
+  "publishAt",
+] as const;
+
+function isString(value: FormDataEntryValue): value is string {
+  return typeof value === "string";
+}
+
+function readStoryForm(formData: FormData) {
+  return {
+    ...readFormText(formData, TEXT_FIELDS),
+    tags: formData.getAll("tags").filter(isString),
+    featured: formData.get("featured") === "on",
+  };
+}
+
+export async function saveStory(
+  id: string | null,
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const { user } = await requireAdmin();
+
+  if (id !== null && !idSchema.safeParse(id).success) {
+    return errorState("This story could not be found.");
+  }
+
+  const parsed = storyFormSchema.safeParse(readStoryForm(formData));
+
+  if (!parsed.success) {
+    return validationErrorState(parsed.error);
+  }
+
+  const form = parsed.data;
+
+  // Existing stories keep their slug, it never regenerates by itself
+  const slug: RuleResult<string> =
+    id && !form.slug
+      ? { ok: false, errors: { slug: ["Add a slug"] } }
+      : resolveSlug(form.slug, form.title);
+  const publishedAt = resolvePublishDate(form.status, form.publishAt);
+  const tagNames = normalizeTagNames(form.tags);
+
+  const fieldErrors: FieldErrors = collectErrors(slug, publishedAt, tagNames);
+
+  if (form.status !== "draft") {
+    if (!form.blurb) {
+      fieldErrors.blurb = ["Add a blurb before publishing"];
+    }
+
+    if (!form.coverMediaId) {
+      fieldErrors.coverMediaId = ["Pick a cover before publishing"];
+    }
+
+    if (!form.categoryId) {
+      fieldErrors.categoryId = ["Pick a category before publishing"];
+    }
+  }
+
+  if (
+    !slug.ok ||
+    !publishedAt.ok ||
+    !tagNames.ok ||
+    Object.keys(fieldErrors).length > 0
+  ) {
+    return errorState(FIX_FIELDS, fieldErrors);
+  }
+
+  const author = id ? null : await getAuthor();
+
+  let savedId: string;
+
+  try {
+    savedId = await saveStoryRecord(
+      {
+        title: form.title,
+        slug: slug.value,
+        blurb: form.blurb,
+        coverMediaId: form.coverMediaId,
+        categoryId: form.categoryId,
+        authorId: author?.id ?? null,
+        progress: form.progress,
+        status: form.status,
+        publishedAt: publishedAt.value,
+        isFeatured: form.featured,
+        tagNames: tagNames.value,
+      },
+      id,
+      user.id,
+    );
+  } catch (error) {
+    if (error instanceof StoryNotFoundError) {
+      return errorState(
+        "This story was deleted. Go back to the list and refresh.",
+      );
+    }
+
+    if (isUniqueViolation(error) && getConstraintName(error).includes("slug")) {
+      return errorState(FIX_FIELDS, {
+        slug: ["Another story already uses this slug"],
+      });
+    }
+
+    if (isForeignKeyViolation(error)) {
+      return errorState(
+        "The cover or category was just removed. Refresh and try again.",
+      );
+    }
+
+    console.error("Saving story failed", error);
+    return errorState("Couldn't save right now. Please try again.");
+  }
+
+  revalidatePath("/", "layout");
+
+  if (!id) {
+    redirect(`${STORIES_PATH}/${savedId}?created=1`);
+  }
+
+  if (form.status === "scheduled" && publishedAt.value) {
+    return successState(
+      `Scheduled for ${formatAdminDateTime(publishedAt.value)} IST.`,
+    );
+  }
+
+  return successState(
+    form.status === "published"
+      ? "Saved. It's live on the site."
+      : "Draft saved.",
+  );
+}
+
+export async function deleteStoryAction(id: string): Promise<ActionState> {
+  await requireAdmin();
+
+  if (!idSchema.safeParse(id).success) {
+    return errorState("This story could not be found.");
+  }
+
+  try {
+    await deleteStoryRecord(id);
+  } catch (error) {
+    console.error("Deleting story failed", error);
+    return errorState("Couldn't delete right now. Please try again.");
+  }
+
+  revalidatePath("/", "layout");
+  redirect(STORIES_PATH);
+}
+
+===== src/lib/admin/editor.ts =====
+
+import { getDisplayStatus, STATUS_LABEL } from "@/lib/content/status";
+import { splitParagraphs } from "@/lib/content/text";
+import type { BlogSection, ContentStatus } from "@/lib/db/types";
+
+export type Option = {
+  id: string;
+  label: string;
+};
+
+export type CoverValue = {
+  id: string;
+  url: string;
+  alt: string;
+} | null;
+
+/* One section as it looks in the editor, paragraphs typed as one text */
+export type SectionDraft = {
+  heading: string;
+  body: string;
+  quote: string;
+};
+
+export const EMPTY_SECTION: SectionDraft = { heading: "", body: "", quote: "" };
+
+export function toSectionDrafts(sections: BlogSection[]): SectionDraft[] {
+  const drafts = sections.map((section) => ({
+    heading: section.heading ?? "",
+    body: section.paragraphs.join("\n\n"),
+    quote: section.quote ?? "",
+  }));
+
+  return drafts.length > 0 ? drafts : [EMPTY_SECTION];
+}
+
+/* Turns editor sections into what the site reads, dropping empty ones */
+export function toBlogSections(drafts: SectionDraft[]): BlogSection[] {
+  return drafts.flatMap((draft) => {
+    const heading = draft.heading.trim();
+    const quote = draft.quote.trim();
+    const paragraphs = splitParagraphs(draft.body);
+
+    if (!heading && !quote && paragraphs.length === 0) {
+      return [];
+    }
+
+    const section: BlogSection = { paragraphs };
+
+    if (heading) {
+      section.heading = heading;
+    }
+
+    if (quote) {
+      section.quote = quote;
+    }
+
+    return [section];
+  });
+}
+
+export function toContentOption(
+  id: string,
+  title: string,
+  status: ContentStatus,
+  publishedAt: Date | null,
+): Option {
+  const display = getDisplayStatus(status, publishedAt);
+
+  return {
+    id,
+    label:
+      display === "published" ? title : `${title} (${STATUS_LABEL[display]})`,
+  };
+}
+
+===== src/lib/admin/forms.ts =====
+
+/*
+ * FormData returns null for missing fields, which breaks string
+ * validation. This always gives back strings, empty when missing.
+ */
+export function readFormText(
+  formData: FormData,
+  keys: readonly string[],
+): Record<string, string> {
+  return Object.fromEntries(
+    keys.map((key) => {
+      const value = formData.get(key);
+      return [key, typeof value === "string" ? value : ""];
+    }),
+  );
+}
+
+/* Connects an input to its error or hint text for screen readers */
+export function getFieldA11y(id: string, errors?: string[], hint?: string) {
+  const hasError = Boolean(errors?.length);
+
+  return {
+    id,
+    "aria-invalid": hasError ? true : undefined,
+    "aria-describedby": hasError
+      ? `${id}-error`
+      : hint
+        ? `${id}-hint`
+        : undefined,
+  };
+}
+===== src/lib/content/text.ts =====
+
+import type { BlogSection } from "@/lib/db/types";
+
+const WORDS_PER_MINUTE = 200;
+
+export function countWords(text: string): number {
+  return text.split(/\s+/).filter(Boolean).length;
+}
+
+export function countSectionWords(sections: BlogSection[]): number {
+  return sections.reduce(
+    (total, section) =>
+      total +
+      countWords(section.heading ?? "") +
+      section.paragraphs.reduce(
+        (sum, paragraph) => sum + countWords(paragraph),
+        0,
+      ) +
+      countWords(section.quote ?? ""),
+    0,
+  );
+}
+
+export function getReadTimeMinutes(words: number): number {
+  return Math.max(1, Math.round(words / WORDS_PER_MINUTE));
+}
+
+export function formatReadTime(minutes: number): string {
+  return `${minutes} min read`;
+}
+
+/* Chapter text is typed with an empty line between paragraphs */
+export function splitParagraphs(text: string): string[] {
+  return text
+    .replace(/\r\n/g, "\n")
+    .split(/\n\s*\n/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+}
+
+===== src/lib/media/presets.ts =====
+
+export type ImagePresetKey = "blogCover" | "storyCover" | "avatar";
+
+export type ImagePreset = {
+  label: string;
+  folder: string;
+  maxWidth: number;
+  maxHeight: number;
+  quality: number;
+  /** Width divided by height. Null keeps the original shape */
+  aspectRatio: number | null;
+};
+
+export const IMAGE_PRESETS = {
+  blogCover: {
+    label: "Blog cover",
+    folder: "blogs",
+    maxWidth: 2400,
+    maxHeight: 1600,
+    quality: 0.8,
+    aspectRatio: null,
+  },
+  storyCover: {
+    label: "Story cover",
+    folder: "stories",
+    maxWidth: 900,
+    maxHeight: 1200,
+    quality: 0.85,
+    aspectRatio: 3 / 4,
+  },
+  avatar: {
+    label: "Author photo",
+    folder: "authors",
+    maxWidth: 512,
+    maxHeight: 512,
+    quality: 0.8,
+    aspectRatio: 1,
+  },
+} as const satisfies Record<ImagePresetKey, ImagePreset>;
+
+export const ACCEPTED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/avif",
+] as const;
+
+// What you can pick, checked before conversion
+export const MAX_SOURCE_BYTES = 20 * 1024 * 1024;
+
+// What can be uploaded, checked after conversion
+export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
+
+// WebP first, JPG only if the browser can't make WebP
+export const OUTPUT_IMAGE_TYPES = ["image/webp", "image/jpeg"] as const;
+
+export function isImagePresetKey(value: string): value is ImagePresetKey {
+  return value in IMAGE_PRESETS;
+}
+
+===== src/lib/admin/media/actions.ts =====
+
+"use server";
+
+import { randomUUID } from "node:crypto";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+
+import {
+  errorState,
+  successState,
+  type ActionState,
+} from "@/lib/admin/actionState";
+import { pluralize } from "@/lib/admin/format";
+import { readFormText } from "@/lib/admin/forms";
+import { requireAdmin } from "@/lib/auth/session";
+import { isForeignKeyViolation } from "@/lib/db/errors";
+import {
+  deleteMediaRow,
+  getMediaById,
+  insertMedia,
+  setMediaAltText,
+} from "@/lib/db/media";
+import type { MediaRow } from "@/lib/db/types";
+import {
+  IMAGE_PRESETS,
+  isImagePresetKey,
+  MAX_SOURCE_BYTES,
+  MAX_UPLOAD_BYTES,
+  OUTPUT_IMAGE_TYPES,
+  type ImagePresetKey,
+} from "@/lib/media/presets";
+import { getStorageBucket, getSupabaseAdmin } from "@/lib/storage/supabase";
+import { idSchema, validationErrorState } from "@/lib/validation/shared";
+
+const MEDIA_PATH = "/admin/media";
+
+// Must match the folders in IMAGE_PRESETS
+const STORAGE_PATH_PATTERN =
+  /^(blogs|stories|authors)\/\d{4}\/\d{2}\/[0-9a-f-]{36}\.(webp|jpg)$/;
+
+const presetSchema = z.custom<ImagePresetKey>(
+  (value) => typeof value === "string" && isImagePresetKey(value),
+);
+
+const uploadRequestSchema = z.object({
+  preset: presetSchema,
+  mimeType: z.enum(OUTPUT_IMAGE_TYPES),
+  size: z.number().int().positive().max(MAX_UPLOAD_BYTES),
+});
+
+const finalizeSchema = z.object({
+  path: z.string().regex(STORAGE_PATH_PATTERN),
+  mimeType: z.enum(OUTPUT_IMAGE_TYPES),
+  size: z.number().int().positive().max(MAX_UPLOAD_BYTES),
+  originalSize: z.number().int().positive().max(MAX_SOURCE_BYTES),
+  width: z.number().int().positive().max(10000),
+  height: z.number().int().positive().max(10000),
+  originalName: z.string().trim().max(255),
+  altText: z.string().trim().max(300),
+});
+
+const altSchema = z.object({
+  altText: z.string().trim().max(300, "Keep it under 300 characters"),
+});
+
+export type UploadTicket = {
+  bucket: string;
+  path: string;
+  token: string;
+};
+
+export type UploadTicketResult =
+  | { ok: true; ticket: UploadTicket }
+  | { ok: false; message: string };
+
+export type MediaResult =
+  | { ok: true; media: MediaRow }
+  | { ok: false; message: string };
+
+function buildStoragePath(preset: ImagePresetKey, mimeType: string): string {
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const extension = mimeType === "image/webp" ? "webp" : "jpg";
+
+  return `${IMAGE_PRESETS[preset].folder}/${year}/${month}/${randomUUID()}.${extension}`;
+}
+
+async function storageObjectExists(path: string): Promise<boolean> {
+  const slash = path.lastIndexOf("/");
+  const folder = path.slice(0, slash);
+  const name = path.slice(slash + 1);
+
+  const { data, error } = await getSupabaseAdmin()
+    .storage.from(getStorageBucket())
+    .list(folder, { search: name, limit: 1 });
+
+  return !error && data.some((file) => file.name === name);
+}
+
+/* Step 1. Gives the browser a one time link to upload straight to storage */
+export async function createMediaUpload(
+  input: unknown,
+): Promise<UploadTicketResult> {
+  await requireAdmin();
+
+  const parsed = uploadRequestSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: "This file can't be uploaded. Check its type and size.",
+    };
+  }
+
+  const bucket = getStorageBucket();
+  const path = buildStoragePath(parsed.data.preset, parsed.data.mimeType);
+
+  const { data, error } = await getSupabaseAdmin()
+    .storage.from(bucket)
+    .createSignedUploadUrl(path);
+
+  if (error || !data) {
+    console.error("Could not create signed upload", error);
+    return {
+      ok: false,
+      message: "Couldn't prepare the upload. Please try again.",
+    };
+  }
+
+  return { ok: true, ticket: { bucket, path: data.path, token: data.token } };
+}
+
+/* Step 2. After the upload, checks the file is there and saves it to the library */
+export async function finalizeMediaUpload(
+  input: unknown,
+): Promise<MediaResult> {
+  const { user } = await requireAdmin();
+  const parsed = finalizeSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: "The upload details didn't look right. Please try again.",
+    };
+  }
+
+  const {
+    path,
+    mimeType,
+    size,
+    originalSize,
+    width,
+    height,
+    originalName,
+    altText,
+  } = parsed.data;
+
+  const extensionMatches =
+    (mimeType === "image/webp") === path.endsWith(".webp");
+
+  if (!extensionMatches || !(await storageObjectExists(path))) {
+    return {
+      ok: false,
+      message: "The file didn't reach storage. Please try again.",
+    };
+  }
+
+  const { data } = getSupabaseAdmin()
+    .storage.from(getStorageBucket())
+    .getPublicUrl(path);
+
+  const media = await insertMedia({
+    storage_path: path,
+    url: data.publicUrl,
+    alt_text: altText,
+    original_name: originalName || null,
+    mime_type: mimeType,
+    size_bytes: size,
+    original_size_bytes: originalSize,
+    width,
+    height,
+    uploaded_by: user.id,
+  });
+
+  revalidatePath(MEDIA_PATH);
+
+  return { ok: true, media };
+}
+
+export async function updateMediaAlt(
+  id: string,
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireAdmin();
+
+  if (!idSchema.safeParse(id).success) {
+    return errorState("This image no longer exists.");
+  }
+
+  const values = readFormText(formData, ["altText"]);
+  const parsed = altSchema.safeParse(values);
+
+  if (!parsed.success) {
+    return validationErrorState(parsed.error, values);
+  }
+
+  await setMediaAltText(id, parsed.data.altText);
+  revalidatePath(MEDIA_PATH);
+
+  return successState("Saved");
+}
+
+export async function deleteMedia(id: string): Promise<ActionState> {
+  await requireAdmin();
+
+  if (!idSchema.safeParse(id).success) {
+    return errorState("This image no longer exists.");
+  }
+
+  const media = await getMediaById(id);
+
+  if (!media) {
+    revalidatePath(MEDIA_PATH);
+    return errorState("This image was already deleted.");
+  }
+
+  if (media.usage_count > 0) {
+    return errorState(
+      `Used in ${pluralize(media.usage_count, "place")}. Swap it out there first.`,
+    );
+  }
+
+  try {
+    await deleteMediaRow(id);
+  } catch (error) {
+    if (isForeignKeyViolation(error)) {
+      return errorState(
+        "This image just got used somewhere. Swap it out first.",
+      );
+    }
+
+    console.error("Deleting media failed", error);
+    return errorState("Couldn't delete right now. Please try again.");
+  }
+
+  // The library row is gone, so a failed file cleanup is only logged
+  if (media.storage_path) {
+    const { error } = await getSupabaseAdmin()
+      .storage.from(getStorageBucket())
+      .remove([media.storage_path]);
+
+    if (error) {
+      console.error("Storage cleanup failed", media.storage_path, error);
+    }
+  }
+
+  revalidatePath(MEDIA_PATH);
+
+  return successState("Image deleted.");
+}
+
+===== src/lib/db/media.ts =====
+
+import "server-only";
+
+import { db } from "@/lib/db/knex";
+import type { MediaRow } from "@/lib/db/types";
+
+export const MEDIA_PAGE_SIZE = 24;
+
+export type MediaWithUsage = MediaRow & { usage_count: number };
+export type NewMedia = Omit<MediaRow, "id" | "created_at">;
+
+const USAGE_SQL = `(
+  (select count(*) from blogs b where b.cover_media_id = media.id)
+  + (select count(*) from stories s where s.cover_media_id = media.id)
+  + (select count(*) from authors a where a.avatar_media_id = media.id)
+)::int as usage_count`;
+
+// Stops % and _ in a search from acting as wildcards
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, (character) => `\\${character}`);
+}
+
+export async function listMedia({
+  page,
+  query,
+}: {
+  page: number;
+  query: string;
+}): Promise<{ items: MediaWithUsage[]; total: number }> {
+  const filtered = db("media").modify((builder) => {
+    if (query) {
+      const pattern = `%${escapeLike(query)}%`;
+
+      builder.where((inner) => {
+        inner
+          .whereILike("alt_text", pattern)
+          .orWhereILike("original_name", pattern);
+      });
+    }
+  });
+
+  const [countRow, items] = await Promise.all([
+    filtered.clone().count({ count: "*" }).first(),
+    filtered
+      .clone()
+      .select("media.*", db.raw(USAGE_SQL))
+      .orderBy("created_at", "desc")
+      .limit(MEDIA_PAGE_SIZE)
+      .offset((page - 1) * MEDIA_PAGE_SIZE),
+  ]);
+
+  return {
+    items: items as MediaWithUsage[],
+    total: Number(countRow?.count ?? 0),
+  };
+}
+
+export async function getMediaById(
+  id: string,
+): Promise<MediaWithUsage | undefined> {
+  return db("media")
+    .select("media.*", db.raw(USAGE_SQL))
+    .where("media.id", id)
+    .first();
+}
+
+export async function insertMedia(input: NewMedia): Promise<MediaRow> {
+  const [media] = await db<MediaRow>("media").insert(input).returning("*");
+
+  if (!media) {
+    throw new Error("Failed to save media");
+  }
+
+  return media;
+}
+
+export async function setMediaAltText(
+  id: string,
+  altText: string,
+): Promise<void> {
+  await db<MediaRow>("media").where({ id }).update({ alt_text: altText });
+}
+
+export async function deleteMediaRow(id: string): Promise<void> {
+  await db<MediaRow>("media").where({ id }).delete();
+}
+
+===== src/lib/db/stories.ts =====
+
+import "server-only";
+
+import type { Knex } from "knex";
+
+import type { StatusFilter } from "@/lib/content/status";
+import { db } from "@/lib/db/knex";
+import { escapeLike } from "@/lib/db/sql";
+import { ensureTagIds } from "@/lib/db/tagLinks";
+import type {
+  ChapterRow,
+  ContentStatus,
+  StoryProgress,
+  StoryRow,
+} from "@/lib/db/types";
+
+export const STORY_PAGE_SIZE = 20;
+
+export class StoryNotFoundError extends Error {}
+export class ChapterNotFoundError extends Error {}
+
+export type AdminStoryListItem = {
+  id: string;
+  slug: string;
+  title: string;
+  status: ContentStatus;
+  progress: StoryProgress;
+  published_at: Date | null;
+  updated_at: Date;
+  is_featured: boolean;
+  category_name: string | null;
+  cover_url: string | null;
+  chapter_count: number;
+  live_chapter_count: number;
+  view_count: number;
+  like_count: number;
+  comment_count: number;
+};
+
+export type StoryEditorRecord = {
+  story: StoryRow;
+  cover: { id: string; url: string; alt_text: string } | null;
+  tagNames: string[];
+};
+
+export type StorySummary = Pick<
+  StoryRow,
+  "id" | "title" | "slug" | "status" | "published_at"
+>;
+
+export type StorySaveInput = {
+  title: string;
+  slug: string;
+  blurb: string;
+  coverMediaId: string | null;
+  categoryId: string | null;
+  authorId: string | null;
+  progress: StoryProgress;
+  status: ContentStatus;
+  publishedAt: Date | null;
+  isFeatured: boolean;
+  tagNames: string[];
+};
+
+export type AdminChapterItem = {
+  id: string;
+  number: number;
+  title: string;
+  status: ContentStatus;
+  published_at: Date | null;
+  updated_at: Date;
+  word_count: number;
+  view_count: number;
+};
+
+export type ChapterNeighbor = {
+  id: string;
+  number: number;
+  title: string;
+} | null;
+
+export type ChapterSaveInput = {
+  title: string;
+  content: string;
+  wordCount: number;
+  status: ContentStatus;
+  publishedAt: Date | null;
+};
+
+// Knex marks aggregate results as optional, and max is null when there are no rows
+type MaxRow = { max?: number | null } | undefined;
+
+function applyStatusFilter(
+  builder: Knex.QueryBuilder,
+  filter: StatusFilter,
+): void {
+  if (filter === "draft") {
+    builder.where("s.status", "draft");
+    return;
+  }
+
+  if (filter === "published") {
+    builder
+      .whereNot("s.status", "draft")
+      .where("s.published_at", "<=", db.fn.now());
+    return;
+  }
+
+  if (filter === "scheduled") {
+    builder
+      .whereNot("s.status", "draft")
+      .where("s.published_at", ">", db.fn.now());
+  }
+}
+
+async function touchStory(
+  trx: Knex.Transaction,
+  storyId: string,
+): Promise<void> {
+  await trx("stories")
+    .where({ id: storyId })
+    .update({ updated_at: new Date() });
+}
+
+/* Stories */
+
+export async function listAdminStories({
+  filter,
+  query,
+  page,
+}: {
+  filter: StatusFilter;
+  query: string;
+  page: number;
+}): Promise<{ items: AdminStoryListItem[]; total: number }> {
+  const filtered = db("stories as s")
+    .modify(applyStatusFilter, filter)
+    .modify((builder) => {
+      if (query) {
+        builder.whereILike("s.title", `%${escapeLike(query)}%`);
+      }
+    });
+
+  const [countRow, items] = await Promise.all([
+    filtered.clone().count({ count: "*" }).first(),
+    filtered
+      .clone()
+      .leftJoin("categories as c", "c.id", "s.category_id")
+      .leftJoin("media as m", "m.id", "s.cover_media_id")
+      .select(
+        "s.id",
+        "s.slug",
+        "s.title",
+        "s.status",
+        "s.progress",
+        "s.published_at",
+        "s.updated_at",
+        "s.is_featured",
+        "c.name as category_name",
+        "m.url as cover_url",
+        db.raw(
+          "(select count(*) from chapters ch where ch.story_id = s.id)::int as chapter_count",
+        ),
+        db.raw(
+          "(select count(*) from chapters ch where ch.story_id = s.id and ch.status <> 'draft' and ch.published_at <= now())::int as live_chapter_count",
+        ),
+        db.raw(
+          "(select count(*) from page_views pv where pv.story_id = s.id)::int as view_count",
+        ),
+        db.raw(
+          "(select count(*) from likes l where l.story_id = s.id)::int as like_count",
+        ),
+        db.raw(
+          "(select count(*) from comments cm where cm.story_id = s.id and not cm.is_hidden)::int as comment_count",
+        ),
+      )
+      .orderBy("s.updated_at", "desc")
+      .limit(STORY_PAGE_SIZE)
+      .offset((page - 1) * STORY_PAGE_SIZE),
+  ]);
+
+  return {
+    items: items as AdminStoryListItem[],
+    total: Number(countRow?.count ?? 0),
+  };
+}
+
+export async function getStoryStatusCounts(): Promise<
+  Record<StatusFilter, number>
+> {
+  const row = await db("stories").first(
+    db.raw("count(*)::int as total"),
+    db.raw("(count(*) filter (where status = 'draft'))::int as draft"),
+    db.raw(
+      "(count(*) filter (where status <> 'draft' and published_at <= now()))::int as published",
+    ),
+    db.raw(
+      "(count(*) filter (where status <> 'draft' and published_at > now()))::int as scheduled",
+    ),
+  );
+
+  return {
+    all: row?.total ?? 0,
+    draft: row?.draft ?? 0,
+    published: row?.published ?? 0,
+    scheduled: row?.scheduled ?? 0,
+  };
+}
+
+export async function getStoryForEditor(
+  id: string,
+): Promise<StoryEditorRecord | undefined> {
+  const story = await db<StoryRow>("stories").where({ id }).first();
+
+  if (!story) {
+    return undefined;
+  }
+
+  const [cover, tagNames] = await Promise.all([
+    story.cover_media_id
+      ? db("media")
+          .select("id", "url", "alt_text")
+          .where({ id: story.cover_media_id })
+          .first()
+      : null,
+    db("story_tags as st")
+      .join("tags as t", "t.id", "st.tag_id")
+      .where("st.story_id", id)
+      .orderByRaw("lower(t.name) asc")
+      .pluck("t.name"),
+  ]);
+
+  return { story, cover: cover ?? null, tagNames };
+}
+
+export async function getStorySummary(
+  id: string,
+): Promise<StorySummary | undefined> {
+  return db("stories")
+    .select("id", "title", "slug", "status", "published_at")
+    .where({ id })
+    .first();
+}
+
+export async function saveStoryRecord(
+  input: StorySaveInput,
+  id: string | null,
+  userId: string,
+): Promise<string> {
+  return db.transaction(async (trx) => {
+    // Only one featured story, so the old one steps down first
+    if (input.isFeatured) {
+      await trx("stories")
+        .where({ is_featured: true })
+        .modify((builder) => {
+          if (id) {
+            builder.whereNot({ id });
+          }
+        })
+        .update({ is_featured: false });
+    }
+
+    const row = {
+      slug: input.slug,
+      title: input.title,
+      blurb: input.blurb,
+      cover_media_id: input.coverMediaId,
+      category_id: input.categoryId,
+      progress: input.progress,
+      status: input.status,
+      published_at: input.publishedAt,
+      is_featured: input.isFeatured,
+      updated_at: new Date(),
+    };
+
+    let storyId: string;
+
+    if (id) {
+      const updated = await trx("stories").where({ id }).update(row);
+
+      if (updated === 0) {
+        throw new StoryNotFoundError();
+      }
+
+      storyId = id;
+    } else {
+      const [created]: { id: string }[] = await trx("stories")
+        .insert({ ...row, author_id: input.authorId, created_by: userId })
+        .returning("id");
+
+      storyId = created.id;
+    }
+
+    const tagIds = await ensureTagIds(trx, input.tagNames);
+
+    await trx("story_tags").where({ story_id: storyId }).delete();
+
+    if (tagIds.length > 0) {
+      await trx("story_tags").insert(
+        tagIds.map((tagId) => ({ story_id: storyId, tag_id: tagId })),
+      );
+    }
+
+    return storyId;
+  });
+}
+
+export async function deleteStoryRecord(id: string): Promise<void> {
+  await db("stories").where({ id }).delete();
+}
+
+/* Chapters */
+
+export async function listChaptersForStory(
+  storyId: string,
+): Promise<AdminChapterItem[]> {
+  return db("chapters as ch")
+    .select(
+      "ch.id",
+      "ch.number",
+      "ch.title",
+      "ch.status",
+      "ch.published_at",
+      "ch.updated_at",
+      "ch.word_count",
+      db.raw(
+        "(select count(*) from page_views pv where pv.chapter_id = ch.id)::int as view_count",
+      ),
+    )
+    .where("ch.story_id", storyId)
+    .orderBy("ch.number", "asc");
+}
+
+export async function getChapterForEditor(
+  storyId: string,
+  chapterId: string,
+): Promise<ChapterRow | undefined> {
+  return db<ChapterRow>("chapters")
+    .where({ id: chapterId, story_id: storyId })
+    .first();
+}
+
+export async function getChapterNeighbors(
+  storyId: string,
+  number: number,
+): Promise<{ previous: ChapterNeighbor; next: ChapterNeighbor }> {
+  const [previous, next] = await Promise.all([
+    db("chapters")
+      .select("id", "number", "title")
+      .where({ story_id: storyId })
+      .where("number", "<", number)
+      .orderBy("number", "desc")
+      .first(),
+    db("chapters")
+      .select("id", "number", "title")
+      .where({ story_id: storyId })
+      .where("number", ">", number)
+      .orderBy("number", "asc")
+      .first(),
+  ]);
+
+  return { previous: previous ?? null, next: next ?? null };
+}
+
+export async function getNextChapterNumber(storyId: string): Promise<number> {
+  const row: MaxRow = await db("chapters")
+    .where({ story_id: storyId })
+    .max({ max: "number" })
+    .first();
+
+  return (row?.max ?? 0) + 1;
+}
+
+export async function createChapterRecord(
+  storyId: string,
+  input: ChapterSaveInput,
+): Promise<string> {
+  return db.transaction(async (trx) => {
+    // Locks the story so two new chapters can't grab the same number
+    const story = await trx("stories")
+      .where({ id: storyId })
+      .forUpdate()
+      .first("id");
+
+    if (!story) {
+      throw new StoryNotFoundError();
+    }
+
+    const row: MaxRow = await trx("chapters")
+      .where({ story_id: storyId })
+      .max({ max: "number" })
+      .first();
+
+    const [created]: { id: string }[] = await trx("chapters")
+      .insert({
+        story_id: storyId,
+        number: (row?.max ?? 0) + 1,
+        title: input.title,
+        content: input.content,
+        word_count: input.wordCount,
+        status: input.status,
+        published_at: input.publishedAt,
+      })
+      .returning("id");
+
+    await touchStory(trx, storyId);
+
+    return created.id;
+  });
+}
+
+export async function updateChapterRecord(
+  storyId: string,
+  chapterId: string,
+  input: ChapterSaveInput,
+): Promise<void> {
+  await db.transaction(async (trx) => {
+    const updated = await trx("chapters")
+      .where({ id: chapterId, story_id: storyId })
+      .update({
+        title: input.title,
+        content: input.content,
+        word_count: input.wordCount,
+        status: input.status,
+        published_at: input.publishedAt,
+        updated_at: new Date(),
+      });
+
+    if (updated === 0) {
+      throw new ChapterNotFoundError();
+    }
+
+    await touchStory(trx, storyId);
+  });
+}
+
+/* Deletes a chapter and closes the gap, so 4 becomes 3 and so on */
+export async function deleteChapterRecord(
+  storyId: string,
+  chapterId: string,
+): Promise<void> {
+  await db.transaction(async (trx) => {
+    await trx("stories").where({ id: storyId }).forUpdate().first("id");
+
+    const chapter: { number: number } | undefined = await trx("chapters")
+      .where({ id: chapterId, story_id: storyId })
+      .first("number");
+
+    if (!chapter) {
+      return;
+    }
+
+    await trx("chapters").where({ id: chapterId }).delete();
+
+    await trx("chapters")
+      .where({ story_id: storyId })
+      .where("number", ">", chapter.number)
+      .decrement("number", 1);
+
+    await touchStory(trx, storyId);
+  });
+}
+
+/* Swaps a chapter with its neighbour. The deferred unique rule allows the swap */
+export async function moveChapterRecord(
+  storyId: string,
+  chapterId: string,
+  direction: "up" | "down",
+): Promise<void> {
+  await db.transaction(async (trx) => {
+    await trx("stories").where({ id: storyId }).forUpdate().first("id");
+
+    const chapter: { id: string; number: number } | undefined = await trx(
+      "chapters",
+    )
+      .where({ id: chapterId, story_id: storyId })
+      .first("id", "number");
+
+    if (!chapter) {
+      return;
+    }
+
+    const neighbor: { id: string; number: number } | undefined = await trx(
+      "chapters",
+    )
+      .where({ story_id: storyId })
+      .where("number", direction === "up" ? "<" : ">", chapter.number)
+      .orderBy("number", direction === "up" ? "desc" : "asc")
+      .first("id", "number");
+
+    if (!neighbor) {
+      return;
+    }
+
+    await trx("chapters")
+      .where({ id: chapter.id })
+      .update({ number: neighbor.number });
+    await trx("chapters")
+      .where({ id: neighbor.id })
+      .update({ number: chapter.number });
+  });
+}
+
+===== src/lib/blog/types.ts =====
+
+import type { BlogSection } from "@/lib/db/types";
+
+export type { BlogSection };
+
+/* Everything a card or list needs */
+export interface BlogSummary {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  category: string;
+  tags: string[];
+  image: string;
+  publishedAt: string;
+  readTime: string;
+  author: string;
+  /* Optional, so the editor preview can build a post without it */
+  viewCount?: number;
+}
+
+/* The full post for the blog page */
+export interface Blog extends BlogSummary {
+  content: BlogSection[];
+  authorBio: string;
+  authorAvatarUrl: string | null;
+}
+
+===== src/lib/story/types.ts =====
+
+import type { StoryProgress } from "@/lib/db/types";
+
+/* Everything a card or list needs */
+export interface StorySummary {
+  id: string;
+  slug: string;
+  title: string;
+  blurb: string;
+  category: string;
+  tags: string[];
+  cover: string;
+  progress: StoryProgress;
+  chapterCount: number;
+  publishedAt: string;
+  updatedAt: string;
+  /* Story page views plus views on all its chapters */
+  viewCount?: number;
+}
+
+/* The story page */
+export interface StoryDetail extends StorySummary {
+  author: string;
+  authorBio: string;
+  authorAvatarUrl: string | null;
+  wordCount: number;
+}
+
+export interface ChapterListItem {
+  id: string;
+  number: number;
+  title: string;
+  publishedAt: string;
+  wordCount: number;
+}
+
+export interface ChapterReading extends ChapterListItem {
+  paragraphs: string[];
+  readTime: string;
+}
+
+===== src/components/admin/fields/CoverPicker.tsx =====
+
+"use client";
+
+import Image from "next/image";
+import { useState } from "react";
+import { PhotoIcon } from "@heroicons/react/24/outline";
+
+import MediaPickerDialog from "@/components/admin/media/MediaPickerDialog";
+import type { CoverValue } from "@/lib/admin/editor";
+import { smallButtonClass } from "@/lib/admin/ui";
+import type { ImagePresetKey } from "@/lib/media/presets";
+
+interface CoverPickerProps {
+  id: string;
+  name: string;
+  label: string;
+  preset: ImagePresetKey;
+  value: CoverValue;
+  onChange: (next: CoverValue) => void;
+  /** A full aspect class like aspect-16/10, so Tailwind can find it */
+  aspectClass: string;
+  hint?: string;
+  errors?: string[];
+}
+
+export default function CoverPicker({
+  id,
+  name,
+  label,
+  preset,
+  value,
+  onChange,
+  aspectClass,
+  hint,
+  errors,
+}: CoverPickerProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const error = errors?.[0];
+  const messageId = `${id}-message`;
+
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-sm font-medium text-foreground">{label}</p>
+
+      <div
+        className={`w-full ${aspectClass} bg-surface-muted rounded-lg relative overflow-hidden ring-1 ring-border`}
+      >
+        {value ? (
+          <Image
+            src={value.url}
+            alt={value.alt}
+            fill
+            sizes="340px"
+            className="object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-sm text-muted">
+            <PhotoIcon aria-hidden="true" className="w-8 h-8" />
+            No image yet
+          </div>
+        )}
+      </div>
+
+      {(error || hint) && (
+        <p
+          id={messageId}
+          className={
+            error ? "text-sm text-red-600" : "text-xs leading-5 text-muted"
+          }
+        >
+          {error ?? hint}
+        </p>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setIsOpen(true)}
+          aria-describedby={error || hint ? messageId : undefined}
+          className={smallButtonClass.secondary}
+        >
+          {value ? "Change" : "Choose image"}
+        </button>
+
+        {value && (
+          <button
+            type="button"
+            onClick={() => onChange(null)}
+            className={smallButtonClass.danger}
+          >
+            Remove
+          </button>
+        )}
+      </div>
+
+      <input type="hidden" name={name} value={value?.id ?? ""} />
+
+      {isOpen && (
+        <MediaPickerDialog
+          title={label}
+          preset={preset}
+          onSelect={(cover) => {
+            onChange(cover);
+            setIsOpen(false);
+          }}
+          onClose={() => setIsOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+===== src/components/admin/fields/TagInput.tsx =====
+
+"use client";
+
+import { useState, type KeyboardEvent } from "react";
+import { PlusIcon, XMarkIcon } from "@heroicons/react/20/solid";
+
+import { getFieldA11y } from "@/lib/admin/forms";
+import { inputClass } from "@/lib/admin/ui";
+
+const MAX_SUGGESTIONS = 6;
+
+interface TagInputProps {
+  id: string;
+  name: string;
+  value: string[];
+  onChange: (next: string[]) => void;
+  suggestions: string[];
+  max: number;
+  maxLength: number;
+  hint?: string;
+  errors?: string[];
+}
+
+export default function TagInput({
+  id,
+  name,
+  value,
+  onChange,
+  suggestions,
+  max,
+  maxLength,
+  hint,
+  errors,
+}: TagInputProps) {
+  const [draft, setDraft] = useState("");
+
+  const selected = new Set(value.map((tag) => tag.toLowerCase()));
+  const search = draft.trim().toLowerCase();
+  const isFull = value.length >= max;
+
+  const matches = search
+    ? suggestions
+        .filter(
+          (suggestion) =>
+            !selected.has(suggestion.toLowerCase()) &&
+            suggestion.toLowerCase().includes(search),
+        )
+        .slice(0, MAX_SUGGESTIONS)
+    : [];
+
+  function addTag(raw: string) {
+    const cleaned = raw.trim().replace(/\s+/g, " ").slice(0, maxLength);
+    setDraft("");
+
+    if (!cleaned || isFull) {
+      return;
+    }
+
+    // Reuses the existing spelling, so technology becomes Technology
+    const existing = suggestions.find(
+      (suggestion) => suggestion.toLowerCase() === cleaned.toLowerCase(),
+    );
+    const tag = existing ?? cleaned;
+
+    if (!selected.has(tag.toLowerCase())) {
+      onChange([...value, tag]);
+    }
+  }
+
+  function removeTag(tag: string) {
+    onChange(value.filter((item) => item !== tag));
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.nativeEvent.isComposing) {
+      return;
+    }
+
+    if (event.key === "Enter" || event.key === ",") {
+      event.preventDefault();
+      addTag(draft);
+      return;
+    }
+
+    if (event.key === "Backspace" && !draft && value.length > 0) {
+      removeTag(value[value.length - 1]);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      {value.length > 0 && (
+        <ul className="flex flex-wrap gap-2">
+          {value.map((tag) => (
+            <li
+              key={tag}
+              className="pl-3 pr-1 py-1 inline-flex items-center gap-1 text-xs text-foreground bg-surface-muted rounded-full"
+            >
+              {tag}
+              <button
+                type="button"
+                onClick={() => removeTag(tag)}
+                aria-label={`Remove ${tag}`}
+                className="w-5 h-5 flex items-center justify-center text-muted rounded-full transition-colors hover:text-foreground hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                <XMarkIcon aria-hidden="true" className="w-3.5 h-3.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <input
+        {...getFieldA11y(id, errors, hint)}
+        type="text"
+        value={draft}
+        disabled={isFull}
+        autoComplete="off"
+        onChange={(event) => setDraft(event.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder={
+          isFull ? `Up to ${max} tags` : "Type a tag and press Enter"
+        }
+        className={inputClass}
+      />
+
+      {matches.length > 0 && (
+        <ul aria-label="Matching tags" className="flex flex-wrap gap-2">
+          {matches.map((match) => (
+            <li key={match}>
+              <button
+                type="button"
+                onClick={() => addTag(match)}
+                className="px-3 py-1 inline-flex items-center gap-1 text-xs text-muted bg-background border border-border rounded-full transition-colors hover:text-foreground hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                <PlusIcon aria-hidden="true" className="w-3.5 h-3.5" />
+                {match}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {value.map((tag) => (
+        <input key={tag} type="hidden" name={name} value={tag} />
+      ))}
+    </div>
+  );
+}
+
+===== src/components/admin/media/MediaPickerDialog.tsx =====
+
+"use client";
+
+import Image from "next/image";
+import { useEffect, useId, useRef, useState, type MouseEvent } from "react";
+import { createPortal } from "react-dom";
+import { ArrowPathIcon, XMarkIcon } from "@heroicons/react/20/solid";
+
+import ImageUploader from "@/components/admin/media/ImageUploader";
+import type { CoverValue } from "@/lib/admin/editor";
+import { listMediaForPicker, type PickerMedia } from "@/lib/admin/media/picker";
+import { buttonClass, iconButtonClass, inputClass } from "@/lib/admin/ui";
+import type { ImagePresetKey } from "@/lib/media/presets";
+
+type Tab = "library" | "upload";
+
+const TABS: { value: Tab; label: string }[] = [
+  { value: "library", label: "Library" },
+  { value: "upload", label: "Upload new" },
+];
+
+const SEARCH_DELAY_MS = 300;
+const LOAD_ERROR = "Couldn't load your images. Please try again.";
+
+interface MediaPickerDialogProps {
+  title: string;
+  preset: ImagePresetKey;
+  onSelect: (cover: NonNullable<CoverValue>) => void;
+  onClose: () => void;
+}
+
+export default function MediaPickerDialog({
+  title,
+  preset,
+  onSelect,
+  onClose,
+}: MediaPickerDialogProps) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const id = useId();
+
+  const [tab, setTab] = useState<Tab>("library");
+  const [query, setQuery] = useState("");
+  const [items, setItems] = useState<PickerMedia[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+
+  const titleId = `${id}-title`;
+  const searchId = `${id}-search`;
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+
+    if (dialog && !dialog.open) {
+      dialog.showModal();
+    }
+  }, []);
+
+  // Waits a moment after typing so every keystroke isn't a request
+  useEffect(() => {
+    let cancelled = false;
+
+    const timer = window.setTimeout(
+      async () => {
+        setIsLoading(true);
+        setLoadError("");
+
+        try {
+          const result = await listMediaForPicker({ query, page: 1 });
+
+          if (!cancelled) {
+            setItems(result.items);
+            setPage(1);
+            setHasMore(result.hasMore);
+          }
+        } catch {
+          if (!cancelled) {
+            setLoadError(LOAD_ERROR);
+          }
+        } finally {
+          if (!cancelled) {
+            setIsLoading(false);
+          }
+        }
+      },
+      query ? SEARCH_DELAY_MS : 0,
+    );
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [query]);
+
+  async function loadMore() {
+    const nextPage = page + 1;
+    setIsLoading(true);
+
+    try {
+      const result = await listMediaForPicker({ query, page: nextPage });
+      setItems((current) => [...current, ...result.items]);
+      setPage(nextPage);
+      setHasMore(result.hasMore);
+    } catch {
+      setLoadError(LOAD_ERROR);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  function close() {
+    dialogRef.current?.close();
+  }
+
+  function handleBackdropClick(event: MouseEvent<HTMLDialogElement>) {
+    if (event.target === event.currentTarget) {
+      close();
+    }
+  }
+
+  function choose(media: PickerMedia) {
+    onSelect({ id: media.id, url: media.url, alt: media.alt_text });
+  }
+
+  return createPortal(
+    <dialog
+      ref={dialogRef}
+      aria-labelledby={titleId}
+      onClose={onClose}
+      onClick={handleBackdropClick}
+      className="w-[calc(100%-2rem)] max-w-4xl max-h-[85dvh] p-0 m-auto text-foreground bg-surface shadow-xl border border-border rounded-xl backdrop:bg-foreground/30 backdrop:backdrop-blur-sm"
+    >
+      <div className="max-h-[85dvh] flex flex-col">
+        <div className="px-5 py-4 flex items-center justify-between gap-4 border-b border-border">
+          <h2 id={titleId} className="text-lg font-semibold text-foreground">
+            {title}
+          </h2>
+
+          <button
+            type="button"
+            onClick={close}
+            aria-label="Close"
+            className={iconButtonClass}
+          >
+            <XMarkIcon aria-hidden="true" className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div
+          role="tablist"
+          aria-label="Image source"
+          className="px-5 pt-4 flex gap-2"
+        >
+          {TABS.map((item) => (
+            <button
+              key={item.value}
+              type="button"
+              role="tab"
+              aria-selected={tab === item.value}
+              onClick={() => setTab(item.value)}
+              className="h-9 px-4 text-sm font-medium text-muted rounded-full transition-colors hover:text-foreground aria-selected:text-accent-foreground aria-selected:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="p-5 flex-1 overflow-y-auto">
+          {tab === "library" ? (
+            <div className="flex flex-col gap-4">
+              <label htmlFor={searchId} className="sr-only">
+                Search images
+              </label>
+
+              <input
+                id={searchId}
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search alt text or file name"
+                className={inputClass}
+              />
+
+              {loadError && (
+                <p role="alert" className="text-sm text-red-600">
+                  {loadError}
+                </p>
+              )}
+
+              {items.length > 0 ? (
+                <ul
+                  role="list"
+                  className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4"
+                >
+                  {items.map((media) => (
+                    <li key={media.id}>
+                      <button
+                        type="button"
+                        onClick={() => choose(media)}
+                        aria-label={media.alt_text || "Image without alt text"}
+                        className="w-full aspect-4/3 block bg-surface-muted rounded-lg relative overflow-hidden ring-1 ring-border transition hover:ring-2 hover:ring-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                      >
+                        <Image
+                          src={media.url}
+                          alt=""
+                          fill
+                          sizes="200px"
+                          className="object-cover"
+                        />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                !isLoading &&
+                !loadError && (
+                  <p className="py-10 text-center text-sm text-muted">
+                    {query
+                      ? "No images match."
+                      : "No images yet. Upload one instead."}
+                  </p>
+                )
+              )}
+
+              {isLoading && (
+                <p className="py-4 flex items-center justify-center gap-2 text-sm text-muted">
+                  <ArrowPathIcon
+                    aria-hidden="true"
+                    className="w-4 h-4 animate-spin motion-reduce:animate-none"
+                  />
+                  Loading
+                </p>
+              )}
+
+              {hasMore && !isLoading && (
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    onClick={loadMore}
+                    className={buttonClass.secondary}
+                  >
+                    Load more
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <ImageUploader
+              preset={preset}
+              onUploaded={(media) =>
+                onSelect({ id: media.id, url: media.url, alt: media.alt_text })
+              }
+            />
+          )}
+        </div>
+      </div>
+    </dialog>,
+    document.body,
+  );
+}
+
+===== src/components/blog/BlogArticle.tsx =====
+
+import Image from "next/image";
+import Link from "next/link";
+import { ArrowLeftIcon } from "@heroicons/react/20/solid";
+
+import ViewCount from "@/components/shared/ViewCount";
+import { smallButtonClass } from "@/lib/admin/ui";
+import type { Blog, BlogSummary } from "@/lib/blog/types";
+import { textLang } from "@/lib/content/script";
+import { formatDate } from "@/lib/formatDate";
+
+import AuthorCard from "./AuthorCard";
+import RecommendedBlogs from "./RecommendedBlogs";
+import TableOfContents, { type TocItem } from "./TableOfContent";
+
+type BlogSection = Blog["content"][number];
+
+type ArticleSection = BlogSection & {
+  id?: string;
+  key: string;
+};
+
+interface BlogArticleProps {
+  blog: Blog;
+  recommendedBlogs?: BlogSummary[];
+}
+
+/* One centered column when narrow, and the left track of the grid from xl */
+const blockClass = "w-full min-w-0 max-w-3xl mx-auto xl:max-w-none xl:mx-0";
+
+const chipClass =
+  "px-3 py-1.5 inline-flex text-xs bg-linear-to-br from-surface to-surface-muted border border-border rounded-lg";
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-");
+}
+
+function buildSections(content: BlogSection[]): ArticleSection[] {
+  const usedIds = new Map<string, number>();
+
+  return content.map((section, index) => {
+    if (!section.heading) {
+      return { ...section, key: `section-${index}` };
+    }
+
+    const baseId = slugify(section.heading) || `section-${index}`;
+    const count = usedIds.get(baseId) ?? 0;
+    usedIds.set(baseId, count + 1);
+
+    const id = count > 0 ? `${baseId}-${count}` : baseId;
+
+    return { ...section, id, key: id };
+  });
+}
+
+function buildToc(sections: ArticleSection[]): TocItem[] {
+  return sections.flatMap((section) =>
+    section.id && section.heading
+      ? [{ id: section.id, heading: section.heading }]
+      : [],
+  );
+}
+
+export default function BlogArticle({
+  blog,
+  recommendedBlogs = [],
+}: BlogArticleProps) {
+  const sections = buildSections(blog.content);
+  const toc = buildToc(sections);
+  const date = formatDate(blog.publishedAt);
+  const hasToc = toc.length > 0;
+  const hasRecommended = recommendedBlogs.length > 0;
+  const hasAside = hasToc || hasRecommended;
+
+  return (
+    <article className="w-full px-4 pt-28 pb-10 sm:px-6 sm:pt-32 sm:pb-14 lg:px-8 bg-linear-to-b from-background via-surface to-background">
+      {/* From xl the grid is a 48rem text track and an 18rem panel track. The heading and cover span both */}
+      <div className="w-full max-w-274 mx-auto grid grid-cols-1 gap-y-8 sm:gap-y-10 xl:grid-cols-[minmax(0,48rem)_18rem] xl:gap-x-10">
+        <header
+          className={`${blockClass} xl:col-span-2 flex flex-col gap-5 sm:gap-6`}
+        >
+          <Link
+            href="/blogs"
+            className={`${smallButtonClass.secondary} w-fit group`}
+          >
+            <ArrowLeftIcon
+              aria-hidden="true"
+              className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-1 motion-reduce:transition-none"
+            />
+            All posts
+          </Link>
+
+          <h1
+            lang={textLang(blog.title)}
+            className="font-serif text-3xl sm:text-4xl lg:text-5xl leading-[1.1] tracking-tight hi:leading-[1.35] hi:tracking-normal text-balance text-foreground"
+          >
+            {blog.title}
+          </h1>
+
+          <p
+            lang={textLang(blog.excerpt)}
+            className="max-w-3xl text-lg sm:text-xl leading-7 sm:leading-8 hi:sm:leading-9 text-pretty text-muted"
+          >
+            {blog.excerpt}
+          </p>
+
+          <ul className="flex flex-wrap items-center gap-2">
+            <li
+              lang={textLang(blog.category)}
+              className={`${chipClass} font-medium text-accent`}
+            >
+              {blog.category}
+            </li>
+
+            {blog.tags.map((tag) => (
+              <li
+                key={tag}
+                lang={textLang(tag)}
+                className={`${chipClass} text-muted`}
+              >
+                {tag}
+              </li>
+            ))}
+          </ul>
+
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+            <span>
+              By{" "}
+              <span
+                lang={textLang(blog.author)}
+                className="font-medium text-foreground"
+              >
+                {blog.author}
+              </span>
+            </span>
+            <span aria-hidden="true">•</span>
+            <time dateTime={date.iso}>{date.label}</time>
+            <span aria-hidden="true">•</span>
+            <span>{blog.readTime}</span>
+            <ViewCount count={blog.viewCount} separated />
+          </div>
+        </header>
+
+        <div
+          className={`${blockClass} xl:col-span-2 aspect-16/10 xl:aspect-21/9 bg-linear-to-br from-surface to-surface-muted rounded-lg relative overflow-hidden`}
+        >
+          {blog.image ? (
+            <Image
+              src={blog.image}
+              alt=""
+              fill
+              priority
+              sizes="(min-width: 1280px) 1096px, (min-width: 768px) 768px, 100vw"
+              className="object-cover"
+            />
+          ) : (
+            <div className="flex items-center justify-center text-sm text-muted absolute inset-0">
+              No cover yet
+            </div>
+          )}
+        </div>
+
+        <div className={`${blockClass} pt-2 flex flex-col gap-10 sm:gap-12`}>
+          {sections.map((section) => (
+            <section
+              key={section.key}
+              id={section.id}
+              className="flex flex-col gap-5 scroll-mt-24"
+            >
+              {section.heading && (
+                <h2
+                  lang={textLang(section.heading)}
+                  className="font-serif text-2xl sm:text-3xl leading-tight hi:leading-[1.4] text-balance text-foreground"
+                >
+                  {section.heading}
+                </h2>
+              )}
+
+              {section.paragraphs.map((paragraph, index) => (
+                <p
+                  key={`${section.key}-p-${index}`}
+                  lang={textLang(paragraph)}
+                  className="text-base leading-7 hi:leading-8 sm:text-lg sm:leading-8 sm:hi:leading-9 text-foreground/85"
+                >
+                  {paragraph}
+                </p>
+              ))}
+
+              {section.quote && (
+                <blockquote className="p-5 sm:p-6 bg-linear-to-br from-surface to-surface-muted border-l-4 border-accent rounded-lg">
+                  <p
+                    lang={textLang(section.quote)}
+                    className="font-serif text-lg sm:text-xl italic hi:not-italic leading-8 hi:leading-9 text-foreground"
+                  >
+                    “{section.quote}”
+                  </p>
+                </blockquote>
+              )}
+            </section>
+          ))}
+
+          <AuthorCard
+            name={blog.author}
+            bio={blog.authorBio}
+            avatarUrl={blog.authorAvatarUrl}
+          />
+        </div>
+
+        {hasAside && (
+          <aside
+            aria-label="More about this post"
+            className={`${blockClass} flex flex-col gap-6 xl:col-start-2 xl:pt-2 xl:sticky xl:top-24 xl:self-start xl:max-h-[calc(100vh-7rem)] xl:overflow-y-auto [scrollbar-width:thin]`}
+          >
+            {hasToc && (
+              <div className="hidden xl:block">
+                <TableOfContents items={toc} />
+              </div>
+            )}
+
+            {hasRecommended && <RecommendedBlogs blogs={recommendedBlogs} />}
+          </aside>
+        )}
+      </div>
+    </article>
+  );
+}
+
+===== src/components/story/StoryOverview.tsx =====
+
+import Image from "next/image";
+import Link from "next/link";
+import { ArrowLeftIcon, ArrowRightIcon } from "@heroicons/react/20/solid";
+
+import { pluralize } from "@/lib/admin/format";
+import { PROGRESS_LABEL } from "@/lib/content/story";
+import { textLang } from "@/lib/content/script";
+import { getReadTimeMinutes } from "@/lib/content/text";
+import { formatDate } from "@/lib/formatDate";
+import type { ChapterListItem, StoryDetail } from "@/lib/story/types";
+
+interface StoryOverviewProps {
+  story: StoryDetail;
+  chapters: ChapterListItem[];
+}
+
+export default function StoryOverview({ story, chapters }: StoryOverviewProps) {
+  const firstChapter = chapters[0];
+  const latestChapter = chapters.at(-1);
+  const updated = formatDate(story.updatedAt);
+  const totalMinutes = getReadTimeMinutes(story.wordCount);
+  const chapterPath = (number: number) => `/stories/${story.slug}/${number}`;
+
+  return (
+    <article className="w-full max-w-7xl 2xl:max-w-360 px-4 pt-28 pb-16 sm:px-6 sm:pt-32 sm:pb-20 lg:px-8 mx-auto flex flex-col gap-14 sm:gap-16">
+      <header className="grid gap-8 md:grid-cols-[minmax(0,280px)_minmax(0,1fr)] md:items-start md:gap-10 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)] lg:gap-14">
+        <div className="w-full max-w-xs md:max-w-none aspect-3/4 mx-auto md:mx-0 bg-surface-muted shadow-md rounded-lg relative overflow-hidden">
+          <Image
+            src={story.cover}
+            alt=""
+            fill
+            priority
+            sizes="(min-width: 1024px) 320px, (min-width: 768px) 280px, 320px"
+            className="object-cover"
+          />
+        </div>
+
+        <div className="flex flex-col gap-6">
+          <Link
+            href="/stories"
+            className="w-fit inline-flex items-center gap-1.5 text-sm text-muted rounded-sm transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent group"
+          >
+            <ArrowLeftIcon
+              aria-hidden="true"
+              className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-1 motion-reduce:transition-none"
+            />
+            All stories
+          </Link>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="px-3 py-1.5 text-xs font-medium text-accent-foreground bg-accent rounded-full">
+              {PROGRESS_LABEL[story.progress]}
+            </span>
+            <span
+              lang={textLang(story.category)}
+              className="px-3 py-1.5 text-xs font-medium text-accent bg-surface-muted rounded-full"
+            >
+              {story.category}
+            </span>
+          </div>
+
+          <h1
+            lang={textLang(story.title)}
+            className="font-serif text-4xl sm:text-5xl lg:text-6xl leading-[1.05] tracking-tight hi:leading-[1.3] hi:tracking-normal text-balance text-foreground"
+          >
+            {story.title}
+          </h1>
+
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+            <span>
+              By{" "}
+              <span
+                lang={textLang(story.author)}
+                className="font-medium text-foreground"
+              >
+                {story.author}
+              </span>
+            </span>
+            <span aria-hidden="true">•</span>
+            <span>{pluralize(chapters.length, "chapter")}</span>
+            {chapters.length > 0 && (
+              <>
+                <span aria-hidden="true">•</span>
+                <span>About {totalMinutes} min of reading</span>
+              </>
+            )}
+            <span aria-hidden="true">•</span>
+            <span>
+              Updated <time dateTime={updated.iso}>{updated.label}</time>
+            </span>
+          </div>
+
+          <p
+            lang={textLang(story.blurb)}
+            className="max-w-2xl text-base sm:text-lg leading-7 sm:leading-8 whitespace-pre-line text-pretty text-muted"
+          >
+            {story.blurb}
+          </p>
+
+          {story.tags.length > 0 && (
+            <ul className="flex flex-wrap gap-2">
+              {story.tags.map((tag) => (
+                <li
+                  key={tag}
+                  lang={textLang(tag)}
+                  className="px-3 py-1.5 text-xs text-muted bg-surface-muted rounded-full"
+                >
+                  {tag}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {firstChapter ? (
+            <div className="pt-2 flex flex-col sm:flex-row gap-3">
+              <Link
+                href={chapterPath(firstChapter.number)}
+                className="px-6 py-3 inline-flex items-center justify-center gap-2 text-sm font-medium text-accent-foreground bg-accent shadow-sm rounded-lg transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background group"
+              >
+                Start reading
+                <ArrowRightIcon
+                  aria-hidden="true"
+                  className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1 motion-reduce:transition-none"
+                />
+              </Link>
+
+              {latestChapter &&
+                latestChapter.number !== firstChapter.number && (
+                  <Link
+                    href={chapterPath(latestChapter.number)}
+                    className="px-6 py-3 inline-flex items-center justify-center gap-2 text-sm font-medium text-foreground border border-border rounded-lg transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  >
+                    Latest, chapter {latestChapter.number}
+                  </Link>
+                )}
+            </div>
+          ) : (
+            <p className="pt-2 text-sm font-medium text-accent">
+              The first chapter is on its way.
+            </p>
+          )}
+        </div>
+      </header>
+
+      {chapters.length > 0 && (
+        <section
+          aria-labelledby="chapters-heading"
+          className="flex flex-col gap-6"
+        >
+          <div className="flex items-baseline justify-between gap-4">
+            <h2
+              id="chapters-heading"
+              className="font-serif text-2xl sm:text-3xl text-foreground"
+            >
+              Chapters
+            </h2>
+
+            <p className="text-sm text-muted">{chapters.length} so far</p>
+          </div>
+
+          <ol className="w-full bg-surface shadow-sm rounded-lg divide-y divide-border overflow-hidden">
+            {chapters.map((chapter) => {
+              const date = formatDate(chapter.publishedAt);
+
+              return (
+                <li key={chapter.id}>
+                  <Link
+                    href={chapterPath(chapter.number)}
+                    className="w-full px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-4 transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent group"
+                  >
+                    <span className="min-w-0 flex flex-col gap-1">
+                      <span className="text-xs font-medium uppercase tracking-[0.15em] text-accent">
+                        Chapter {chapter.number}
+                      </span>
+                      <span
+                        lang={textLang(chapter.title)}
+                        className="line-clamp-1 font-serif text-lg hi:leading-[1.5] text-foreground transition-colors group-hover:text-accent"
+                      >
+                        {chapter.title}
+                      </span>
+                    </span>
+
+                    <time
+                      dateTime={date.iso}
+                      className="shrink-0 text-xs text-muted"
+                    >
+                      {date.label}
+                    </time>
+                  </Link>
+                </li>
+              );
+            })}
+          </ol>
+        </section>
+      )}
+    </article>
+  );
+}
+
+===== src/components/story/StoryCard.tsx =====
+
+import Image from "next/image";
+import Link from "next/link";
+
+import ViewCount from "@/components/shared/ViewCount";
+import { pluralize } from "@/lib/admin/format";
+import { textLang } from "@/lib/content/script";
+import { PROGRESS_LABEL } from "@/lib/content/story";
+import { formatDate } from "@/lib/formatDate";
+import type { StorySummary } from "@/lib/story/types";
+
+type HeadingLevel = "h2" | "h3";
+
+interface StoryCardProps {
+  story: StorySummary;
+  priority?: boolean;
+  headingLevel?: HeadingLevel;
+}
+
+export default function StoryCard({
+  story,
+  priority = false,
+  headingLevel = "h2",
+}: StoryCardProps) {
+  const updated = formatDate(story.updatedAt);
+  const Heading = headingLevel;
+
+  return (
+    <article className="w-full h-full flex flex-col bg-linear-to-b from-surface to-surface-muted/60 shadow-sm rounded-lg relative overflow-hidden transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-accent has-[a:focus-visible]:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:translate-y-0 group">
+      <div className="w-full aspect-16/10 bg-surface-muted relative overflow-hidden">
+        <Image
+          src={story.cover}
+          alt=""
+          fill
+          priority={priority}
+          sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+          className="object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+        />
+
+        <span className="px-2.5 py-1 text-xs font-medium text-foreground bg-background/90 backdrop-blur-sm rounded-full absolute top-3 left-3">
+          {PROGRESS_LABEL[story.progress]}
+        </span>
+      </div>
+
+      <div className="p-4 sm:p-5 flex flex-1 flex-col gap-2">
+        <span
+          lang={textLang(story.category)}
+          className="text-xs font-medium uppercase tracking-[0.15em] hi:tracking-normal text-accent"
+        >
+          {story.category}
+        </span>
+
+        <Heading
+          lang={textLang(story.title)}
+          className="line-clamp-2 font-serif text-lg sm:text-xl leading-tight hi:leading-[1.4] text-foreground transition-colors duration-200 group-hover:text-accent"
+        >
+          <Link
+            href={`/stories/${story.slug}`}
+            className="focus-visible:outline-none after:absolute after:inset-0 after:content-['']"
+          >
+            {story.title}
+          </Link>
+        </Heading>
+
+        <p
+          lang={textLang(story.blurb)}
+          className="line-clamp-2 text-sm leading-6 hi:leading-7 text-muted"
+        >
+          {story.blurb}
+        </p>
+
+        <div className="mt-auto pt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+          <span>{pluralize(story.chapterCount, "chapter")}</span>
+          <span aria-hidden="true">•</span>
+          <span>
+            Updated <time dateTime={updated.iso}>{updated.label}</time>
+          </span>
+          <ViewCount count={story.viewCount} separated />
+        </div>
+      </div>
+    </article>
+  );
+}
+
+===== next.config.ts =====
+
+import type { NextConfig } from "next";
+
+const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL
+  ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname
+  : null;
+
+const nextConfig: NextConfig = {
+  serverExternalPackages: ["knex", "pg"],
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
+      {
+        protocol: "https",
+        hostname: "plus.unsplash.com",
+      },
+      // Google profile photos used for the author and reader avatars
+      {
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
+      },
+      ...(supabaseHost
+        ? [
+            {
+              protocol: "https" as const,
+              hostname: supabaseHost,
+              pathname: "/storage/v1/object/public/**",
+            },
+          ]
+        : []),
+    ],
+  },
+};
+
+export default nextConfig;
+
+===== src/components/admin/stories/ChapterEditor.tsx =====
+
+"use client";
+
+import { useId, useMemo, useState } from "react";
+import { InformationCircleIcon } from "@heroicons/react/20/solid";
+
+import PublishPanel, {
+  type PublishValue,
+} from "@/components/admin/fields/PublishPanel";
+import FormField from "@/components/admin/ui/FormField";
+import FormStatus from "@/components/admin/ui/FormStatus";
+import SaveButton, { getSaveLabel } from "@/components/admin/ui/SaveButton";
+import type { ActionState } from "@/lib/admin/actionState";
+import { pluralize } from "@/lib/admin/format";
+import { getFieldA11y } from "@/lib/admin/forms";
+import { cardClass, titleInputClass } from "@/lib/admin/ui";
+import { useEditorForm } from "@/lib/admin/useEditorForm";
+import {
+  countWords,
+  getReadTimeMinutes,
+  splitParagraphs,
+} from "@/lib/content/text";
+import type { ContentStatus } from "@/lib/db/types";
+import { STORY_LIMITS } from "@/lib/validation/story";
+
+export type ChapterEditorInitial = {
+  title: string;
+  content: string;
+  status: ContentStatus;
+  publishAt: string;
+};
+
+const chapterTextClass =
+  "w-full min-w-0 min-h-[60vh] px-5 py-4 font-serif text-base leading-8 text-foreground bg-background rounded-lg ring-1 ring-border outline-none resize-y placeholder:text-muted focus:ring-2 focus:ring-accent aria-invalid:ring-red-600";
+
+const CONTENT_HINT = "Leave an empty line between paragraphs.";
+
+interface ChapterEditorProps {
+  action: (state: ActionState, formData: FormData) => Promise<ActionState>;
+  initial: ChapterEditorInitial;
+  chapterNumber: number;
+  isNew: boolean;
+  storyIsLive: boolean;
+}
+
+export default function ChapterEditor({
+  action,
+  initial,
+  chapterNumber,
+  isNew,
+  storyIsLive,
+}: ChapterEditorProps) {
+  const { state, isPending, markDirty, handleSubmit } = useEditorForm(action);
+  const id = useId();
+
+  const [title, setTitle] = useState(initial.title);
+  const [content, setContent] = useState(initial.content);
+  const [publish, setPublish] = useState<PublishValue>({
+    status: initial.status,
+    publishAt: initial.publishAt,
+    featured: false,
+  });
+
+  const stats = useMemo(() => {
+    const words = countWords(content);
+
+    return {
+      words,
+      paragraphs: splitParagraphs(content).length,
+      minutes: getReadTimeMinutes(words),
+    };
+  }, [content]);
+
+  const errors = state.fieldErrors ?? {};
+  const wasPublished = !isNew && initial.status === "published";
+  const titleId = `${id}-title`;
+  const contentId = `${id}-content`;
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      onChange={markDirty}
+      className="w-full grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start"
+    >
+      <div className={`min-w-0 ${cardClass}`}>
+        <FormField
+          id={titleId}
+          label={`Chapter ${chapterNumber} title`}
+          errors={errors.title}
+        >
+          <input
+            {...getFieldA11y(titleId, errors.title)}
+            name="title"
+            type="text"
+            required
+            value={title}
+            maxLength={STORY_LIMITS.chapterTitle}
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder="The night the lanterns went out"
+            className={titleInputClass}
+          />
+        </FormField>
+
+        <FormField
+          id={contentId}
+          label="Chapter text"
+          hint={CONTENT_HINT}
+          errors={errors.content}
+        >
+          <textarea
+            {...getFieldA11y(contentId, errors.content, CONTENT_HINT)}
+            name="content"
+            value={content}
+            maxLength={STORY_LIMITS.chapterBody}
+            onChange={(event) => setContent(event.target.value)}
+            placeholder="Start the chapter here."
+            className={chapterTextClass}
+          />
+        </FormField>
+
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+          <span>{pluralize(stats.words, "word")}</span>
+          <span aria-hidden="true">•</span>
+          <span>{pluralize(stats.paragraphs, "paragraph")}</span>
+          <span aria-hidden="true">•</span>
+          <span>About {stats.minutes} min read</span>
+        </div>
+      </div>
+
+      <aside className="flex flex-col gap-6 xl:sticky xl:top-24">
+        <PublishPanel
+          id={id}
+          value={publish}
+          onChange={setPublish}
+          errors={errors}
+        >
+          <SaveButton
+            isPending={isPending}
+            label={getSaveLabel(publish.status, wasPublished)}
+          />
+          <FormStatus state={state} />
+        </PublishPanel>
+
+        {!storyIsLive && (
+          <p className="p-4 flex items-start gap-2 text-sm leading-6 text-muted bg-surface-muted border border-border rounded-xl">
+            <InformationCircleIcon
+              aria-hidden="true"
+              className="w-5 h-5 shrink-0 text-accent"
+            />
+            The story itself isn&apos;t live yet, so readers won&apos;t see this
+            chapter until the story is published too.
+          </p>
+        )}
+      </aside>
+    </form>
+  );
+}
+
+===== src/components/admin/stories/ChapterList.tsx =====
+
+import Link from "next/link";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  PlusIcon,
+} from "@heroicons/react/20/solid";
+import { EyeIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
+
+import StatusBadge from "@/components/admin/ui/StatusBadge";
+import { getStatusDateLabel } from "@/lib/admin/dates";
+import { pluralize } from "@/lib/admin/format";
+import { moveChapterAction } from "@/lib/admin/stories/chapterActions";
+import { cardClass, iconButtonClass, smallButtonClass } from "@/lib/admin/ui";
+import { getDisplayStatus } from "@/lib/content/status";
+import type { AdminChapterItem } from "@/lib/db/stories";
+
+const numberFormat = new Intl.NumberFormat("en-US");
+
+interface ChapterListProps {
+  storyId: string;
+  chapters: AdminChapterItem[];
+}
+
+export default function ChapterList({ storyId, chapters }: ChapterListProps) {
+  const now = new Date();
+  const basePath = `/admin/stories/${storyId}/chapters`;
+  const liveCount = chapters.filter(
+    (chapter) =>
+      getDisplayStatus(chapter.status, chapter.published_at, now) ===
+      "published",
+  ).length;
+
+  return (
+    <section aria-labelledby="chapters-heading" className={cardClass}>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <h2
+            id="chapters-heading"
+            className="text-lg font-semibold text-foreground"
+          >
+            Chapters
+          </h2>
+
+          <p className="text-sm text-muted">
+            {pluralize(chapters.length, "chapter")}, {liveCount} live
+          </p>
+        </div>
+
+        <Link href={`${basePath}/new`} className={smallButtonClass.primary}>
+          <PlusIcon aria-hidden="true" className="w-4 h-4" />
+          New chapter
+        </Link>
+      </div>
+
+      {chapters.length === 0 ? (
+        <p className="px-4 py-10 text-center text-sm text-muted bg-background border border-dashed border-border rounded-lg">
+          No chapters yet. Start with chapter one.
+        </p>
+      ) : (
+        <ol className="bg-background border border-border rounded-lg divide-y divide-border overflow-hidden">
+          {chapters.map((chapter, index) => {
+            const status = getDisplayStatus(
+              chapter.status,
+              chapter.published_at,
+              now,
+            );
+            const label = `chapter ${chapter.number}`;
+
+            return (
+              <li
+                key={chapter.id}
+                className="p-3 sm:px-4 flex flex-col md:flex-row md:items-center gap-3"
+              >
+                <div className="min-w-0 flex flex-1 items-center gap-3">
+                  <span className="w-10 h-10 shrink-0 flex items-center justify-center text-sm font-semibold text-accent bg-surface-muted rounded-lg">
+                    {chapter.number}
+                  </span>
+
+                  <div className="min-w-0 flex flex-col gap-1.5">
+                    <Link
+                      href={`${basePath}/${chapter.id}`}
+                      className="line-clamp-1 text-sm font-medium text-foreground rounded-sm transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                    >
+                      {chapter.title}
+                    </Link>
+
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+                      <StatusBadge status={status} />
+                      <span>
+                        {getStatusDateLabel(
+                          status,
+                          chapter.published_at,
+                          chapter.updated_at,
+                        )}
+                      </span>
+                      <span aria-hidden="true">•</span>
+                      <span>{pluralize(chapter.word_count, "word")}</span>
+                      <span aria-hidden="true">•</span>
+                      <span className="inline-flex items-center gap-1">
+                        <EyeIcon aria-hidden="true" className="w-3.5 h-3.5" />
+                        {numberFormat.format(chapter.view_count)}
+                        <span className="sr-only">views</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <form
+                    action={moveChapterAction.bind(
+                      null,
+                      storyId,
+                      chapter.id,
+                      "up",
+                    )}
+                  >
+                    <button
+                      type="submit"
+                      disabled={index === 0}
+                      aria-label={`Move ${label} up`}
+                      className={iconButtonClass}
+                    >
+                      <ArrowUpIcon aria-hidden="true" className="w-4 h-4" />
+                    </button>
+                  </form>
+
+                  <form
+                    action={moveChapterAction.bind(
+                      null,
+                      storyId,
+                      chapter.id,
+                      "down",
+                    )}
+                  >
+                    <button
+                      type="submit"
+                      disabled={index === chapters.length - 1}
+                      aria-label={`Move ${label} down`}
+                      className={iconButtonClass}
+                    >
+                      <ArrowDownIcon aria-hidden="true" className="w-4 h-4" />
+                    </button>
+                  </form>
+
+                  <Link
+                    href={`${basePath}/${chapter.id}`}
+                    className={smallButtonClass.secondary}
+                  >
+                    <PencilSquareIcon aria-hidden="true" className="w-4 h-4" />
+                    Edit
+                  </Link>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </section>
+  );
+}
+
+===== src/components/admin/stories/StoryEditor.tsx =====
+
+"use client";
+
+import Link from "next/link";
+import { useId, useState } from "react";
+
+import CoverPicker from "@/components/admin/fields/CoverPicker";
+import PublishPanel, { type PublishValue } from "@/components/admin/fields/PublishPanel";
+import TagInput from "@/components/admin/fields/TagInput";
+import FormField from "@/components/admin/ui/FormField";
+import FormStatus from "@/components/admin/ui/FormStatus";
+import SaveButton, { getSaveLabel } from "@/components/admin/ui/SaveButton";
+import type { ActionState } from "@/lib/admin/actionState";
+import type { CoverValue, Option } from "@/lib/admin/editor";
+import { getFieldA11y } from "@/lib/admin/forms";
+import {
+  cardClass,
+  inputClass,
+  selectClass,
+  textareaClass,
+  titleInputClass,
+} from "@/lib/admin/ui";
+import { useEditorForm } from "@/lib/admin/useEditorForm";
+import { STORY_PROGRESS_OPTIONS } from "@/lib/content/story";
+import type { ContentStatus, StoryProgress } from "@/lib/db/types";
+import { slugify } from "@/lib/utils/slugify";
+import { BLOG_LIMITS } from "@/lib/validation/blog";
+import { STORY_LIMITS } from "@/lib/validation/story";
+
+export type StoryEditorInitial = {
+  title: string;
+  slug: string;
+  blurb: string;
+  cover: CoverValue;
+  categoryId: string;
+  tags: string[];
+  progress: StoryProgress;
+  status: ContentStatus;
+  publishAt: string;
+  featured: boolean;
+};
+
+interface StoryEditorProps {
+  action: (state: ActionState, formData: FormData) => Promise<ActionState>;
+  initial: StoryEditorInitial;
+  categories: Option[];
+  tagSuggestions: string[];
+  isNew: boolean;
+}
+
+export default function StoryEditor({
+  action,
+  initial,
+  categories,
+  tagSuggestions,
+  isNew,
+}: StoryEditorProps) {
+  const { state, isPending, markDirty, handleSubmit } = useEditorForm(action);
+  const id = useId();
+
+  const [title, setTitle] = useState(initial.title);
+  const [slug, setSlug] = useState(initial.slug);
+  const [slugTouched, setSlugTouched] = useState(!isNew);
+  const [blurb, setBlurb] = useState(initial.blurb);
+  const [cover, setCover] = useState<CoverValue>(initial.cover);
+  const [tags, setTags] = useState(initial.tags);
+  const [publish, setPublish] = useState<PublishValue>({
+    status: initial.status,
+    publishAt: initial.publishAt,
+    featured: initial.featured,
+  });
+
+  const errors = state.fieldErrors ?? {};
+  const shownSlug = slugTouched ? slug : slugify(title);
+  const wasPublished = !isNew && initial.status === "published";
+
+  function withDirty<T>(setter: (value: T) => void) {
+    return (value: T) => {
+      setter(value);
+      markDirty();
+    };
+  }
+
+  const titleId = `${id}-title`;
+  const slugId = `${id}-slug`;
+  const blurbId = `${id}-blurb`;
+  const progressId = `${id}-progress`;
+  const categoryId = `${id}-category`;
+  const tagsId = `${id}-tags`;
+  const slugHint = isNew
+    ? "Used in the link. Follows the title until you edit it."
+    : "Changing this breaks old links to the story.";
+  const blurbHint = `${blurb.length}/${STORY_LIMITS.blurb}. The hook readers see on cards and the story page.`;
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      onChange={markDirty}
+      className="w-full grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start"
+    >
+      <div className={`min-w-0 ${cardClass}`}>
+        <FormField id={titleId} label="Title" errors={errors.title}>
+          <input
+            {...getFieldA11y(titleId, errors.title)}
+            name="title"
+            type="text"
+            required
+            value={title}
+            maxLength={STORY_LIMITS.title}
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder="The lantern keeper of the northern pass"
+            className={titleInputClass}
+          />
+        </FormField>
+
+        <FormField id={slugId} label="Slug" hint={slugHint} errors={errors.slug}>
+          <input
+            {...getFieldA11y(slugId, errors.slug, slugHint)}
+            name="slug"
+            type="text"
+            value={shownSlug}
+            maxLength={120}
+            autoComplete="off"
+            onChange={(event) => {
+              setSlug(event.target.value);
+              setSlugTouched(true);
+            }}
+            placeholder="the-lantern-keeper"
+            className={inputClass}
+          />
+        </FormField>
+
+        <FormField id={blurbId} label="Blurb" hint={blurbHint} errors={errors.blurb}>
+          <textarea
+            {...getFieldA11y(blurbId, errors.blurb, blurbHint)}
+            name="blurb"
+            rows={6}
+            value={blurb}
+            maxLength={STORY_LIMITS.blurb}
+            onChange={(event) => setBlurb(event.target.value)}
+            placeholder="A few lines that make someone want to start chapter one."
+            className={textareaClass}
+          />
+        </FormField>
+
+        <FormField id={progressId} label="Story progress" errors={errors.progress}>
+          <select
+            {...getFieldA11y(progressId, errors.progress)}
+            name="progress"
+            defaultValue={initial.progress}
+            className={selectClass}
+          >
+            {STORY_PROGRESS_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </FormField>
+      </div>
+
+      <aside className="flex flex-col gap-6">
+        <PublishPanel
+          id={id}
+          value={publish}
+          onChange={setPublish}
+          errors={errors}
+          featuredLabel="Feature on the home page"
+        >
+          <SaveButton
+            isPending={isPending}
+            label={getSaveLabel(publish.status, wasPublished)}
+          />
+          <FormStatus state={state} />
+        </PublishPanel>
+
+        <div className={cardClass}>
+          <CoverPicker
+            id={`${id}-cover`}
+            name="coverMediaId"
+            label="Cover"
+            preset="storyCover"
+            value={cover}
+            onChange={withDirty(setCover)}
+            aspectClass="aspect-3/4"
+            hint="Portrait 3:4. Other shapes get cropped from the center."
+            errors={errors.coverMediaId}
+          />
+        </div>
+
+        <div className={cardClass}>
+          <FormField id={categoryId} label="Category" errors={errors.categoryId}>
+            <select
+              {...getFieldA11y(categoryId, errors.categoryId)}
+              name="categoryId"
+              defaultValue={initial.categoryId}
+              className={selectClass}
+            >
+              <option value="">No category</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.label}
+                </option>
+              ))}
+            </select>
+          </FormField>
+
+          <Link
+            href="/admin/categories"
+            className="w-fit text-xs text-muted underline underline-offset-4 rounded-sm transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            Manage categories
+          </Link>
+        </div>
+
+        <div className={cardClass}>
+          <FormField
+            id={tagsId}
+            label="Tags"
+            hint={`Up to ${BLOG_LIMITS.tags}. Genres work great here, like Fantasy or Slow burn.`}
+            errors={errors.tags}
+          >
+            <TagInput
+              id={tagsId}
+              name="tags"
+              value={tags}
+              onChange={withDirty(setTags)}
+              suggestions={tagSuggestions}
+              max={BLOG_LIMITS.tags}
+              maxLength={BLOG_LIMITS.tagName}
+              hint="hint"
+              errors={errors.tags}
+            />
+          </FormField>
+        </div>
+      </aside>
+    </form>
+  );
+}
+===== src/components/admin/stories/StoryList.tsx =====
+
+import Image from "next/image";
+import Link from "next/link";
+import { StarIcon } from "@heroicons/react/20/solid";
+import {
+  ChatBubbleLeftIcon,
+  EyeIcon,
+  HeartIcon,
+  PencilSquareIcon,
+} from "@heroicons/react/24/outline";
+
+import StatusBadge from "@/components/admin/ui/StatusBadge";
+import { getStatusDateLabel } from "@/lib/admin/dates";
+import { smallButtonClass } from "@/lib/admin/ui";
+import { getDisplayStatus } from "@/lib/content/status";
+import { PROGRESS_LABEL } from "@/lib/content/story";
+import type { AdminStoryListItem } from "@/lib/db/stories";
+
+const numberFormat = new Intl.NumberFormat("en-US");
+
+interface StoryListProps {
+  items: AdminStoryListItem[];
+}
+
+export default function StoryList({ items }: StoryListProps) {
+  const now = new Date();
+
+  return (
+    <ul
+      role="list"
+      className="w-full bg-surface border border-border rounded-xl divide-y divide-border overflow-hidden"
+    >
+      {items.map((story) => {
+        const status = getDisplayStatus(story.status, story.published_at, now);
+        const stats = [
+          { label: "Views", value: story.view_count, Icon: EyeIcon },
+          { label: "Likes", value: story.like_count, Icon: HeartIcon },
+          {
+            label: "Comments",
+            value: story.comment_count,
+            Icon: ChatBubbleLeftIcon,
+          },
+        ];
+
+        return (
+          <li
+            key={story.id}
+            className="p-4 sm:px-5 flex flex-col lg:flex-row lg:items-center gap-4"
+          >
+            <div className="min-w-0 flex flex-1 items-start gap-4">
+              <div className="w-12 h-16 shrink-0 bg-surface-muted rounded-md relative overflow-hidden">
+                {story.cover_url && (
+                  <Image
+                    src={story.cover_url}
+                    alt=""
+                    fill
+                    sizes="48px"
+                    className="object-cover"
+                  />
+                )}
+              </div>
+
+              <div className="min-w-0 flex flex-col gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    href={`/admin/stories/${story.id}`}
+                    className="line-clamp-2 font-medium text-foreground rounded-sm transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  >
+                    {story.title}
+                  </Link>
+
+                  {story.is_featured && (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-accent">
+                      <StarIcon aria-hidden="true" className="w-3.5 h-3.5" />
+                      Featured
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+                  <StatusBadge status={status} />
+                  <span className="px-2.5 py-1 bg-surface-muted rounded-full">
+                    {PROGRESS_LABEL[story.progress]}
+                  </span>
+                  {story.category_name && <span>{story.category_name}</span>}
+                  <span aria-hidden="true">•</span>
+                  <span>
+                    {story.live_chapter_count} of {story.chapter_count} chapters
+                    live
+                  </span>
+                  <span aria-hidden="true">•</span>
+                  <span>
+                    {getStatusDateLabel(
+                      status,
+                      story.published_at,
+                      story.updated_at,
+                    )}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <dl className="flex shrink-0 items-center gap-4 text-xs text-muted">
+              {stats.map(({ label, value, Icon }) => (
+                <div key={label} className="flex items-center gap-1.5">
+                  <dt>
+                    <Icon aria-hidden="true" className="w-4 h-4" />
+                    <span className="sr-only">{label}</span>
+                  </dt>
+                  <dd>{numberFormat.format(value)}</dd>
+                </div>
+              ))}
+            </dl>
+
+            <Link
+              href={`/admin/stories/${story.id}`}
+              className={smallButtonClass.secondary}
+            >
+              <PencilSquareIcon aria-hidden="true" className="w-4 h-4" />
+              Edit
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+===== src/components/admin/taxonomy/TaxonomyEditView.tsx =====
+
+import { notFound } from "next/navigation";
+
+import TermForm from "@/components/admin/taxonomy/TermForm";
+import AdminPageHeader from "@/components/admin/ui/AdminPageHeader";
+import BackLink from "@/components/admin/ui/BackLink";
+import ConfirmActionButton from "@/components/admin/ui/ConfirmActionButton";
+import { formatUsage } from "@/lib/admin/format";
+import { deleteTermAction, saveTerm } from "@/lib/admin/taxonomy/actions";
+import { TAXONOMY, type TaxonomyKind } from "@/lib/admin/taxonomy/config";
+import { getTerm } from "@/lib/db/taxonomy";
+import { idSchema } from "@/lib/validation/shared";
+
+interface TaxonomyEditViewProps {
+  kind: TaxonomyKind;
+  id: string;
+}
+
+export default async function TaxonomyEditView({
+  kind,
+  id,
+}: TaxonomyEditViewProps) {
+  if (!idSchema.safeParse(id).success) {
+    notFound();
+  }
+
+  const term = await getTerm(kind, id);
+
+  if (!term) {
+    notFound();
+  }
+
+  const config = TAXONOMY[kind];
+  const usage = formatUsage(term.blog_count, term.story_count);
+  const isUsed = term.blog_count + term.story_count > 0;
+
+  return (
+    <section className="w-full max-w-2xl flex flex-col gap-8">
+      <BackLink href={config.path}>All {config.plural}</BackLink>
+
+      <AdminPageHeader
+        title={term.name}
+        description={
+          isUsed ? `Used in ${usage}.` : "Not used in any blog or story yet."
+        }
+      />
+
+      <TermForm
+        kind={kind}
+        action={saveTerm.bind(null, kind, term.id)}
+        heading="Details"
+        submitLabel="Save changes"
+        pendingLabel="Saving"
+        term={{
+          name: term.name,
+          slug: term.slug,
+          description: term.description,
+        }}
+      />
+
+      <section
+        aria-labelledby="delete-term-heading"
+        className="w-full p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-surface border border-red-600/20 rounded-xl"
+      >
+        <div className="flex flex-col gap-1">
+          <h2
+            id="delete-term-heading"
+            className="text-base font-semibold text-foreground"
+          >
+            Delete this {config.singular}
+          </h2>
+
+          <p className="text-sm leading-6 text-muted">
+            {isUsed
+              ? `Move the ${usage} to another ${config.singular} first.`
+              : "This can't be undone."}
+          </p>
+        </div>
+
+        <ConfirmActionButton
+          action={deleteTermAction.bind(null, kind, term.id)}
+          label="Delete"
+          pendingLabel="Deleting"
+          confirmMessage={`Delete ${term.name}? This can't be undone.`}
+          disabledReason={isUsed ? `Used in ${usage}` : undefined}
+        />
+      </section>
+    </section>
+  );
+}
+
+===== src/components/admin/taxonomy/TaxonomyListView.tsx =====
+
+import TermForm from "@/components/admin/taxonomy/TermForm";
+import TermList from "@/components/admin/taxonomy/TermList";
+import AdminPageHeader from "@/components/admin/ui/AdminPageHeader";
+import { saveTerm } from "@/lib/admin/taxonomy/actions";
+import { TAXONOMY, type TaxonomyKind } from "@/lib/admin/taxonomy/config";
+import { listTerms } from "@/lib/db/taxonomy";
+
+interface TaxonomyListViewProps {
+  kind: TaxonomyKind;
+}
+
+export default async function TaxonomyListView({
+  kind,
+}: TaxonomyListViewProps) {
+  const config = TAXONOMY[kind];
+  const terms = await listTerms(kind);
+
+  return (
+    <section className="w-full flex flex-col gap-8">
+      <AdminPageHeader title={config.title} description={config.description} />
+
+      <div className="w-full grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
+        <div className="xl:order-last xl:sticky xl:top-24">
+          <TermForm
+            kind={kind}
+            action={saveTerm.bind(null, kind, null)}
+            heading={`New ${config.singular}`}
+            submitLabel={`Add ${config.singular}`}
+            pendingLabel="Adding"
+          />
+        </div>
+
+        <TermList kind={kind} terms={terms} />
+      </div>
+    </section>
+  );
+}
+
+===== src/components/admin/taxonomy/TermForm.tsx =====
+
+"use client";
+
+import { useActionState, useId } from "react";
+
+import FormField from "@/components/admin/ui/FormField";
+import FormStatus from "@/components/admin/ui/FormStatus";
+import SubmitButton from "@/components/admin/ui/SubmitButton";
+import { initialActionState, type ActionState } from "@/lib/admin/actionState";
+import { getFieldA11y } from "@/lib/admin/forms";
+import { TAXONOMY, type TaxonomyKind } from "@/lib/admin/taxonomy/config";
+import { cardClass, inputClass, textareaClass } from "@/lib/admin/ui";
+
+export type TermFormValues = {
+  name: string;
+  slug: string;
+  description: string;
+};
+
+const EMPTY_VALUES: TermFormValues = { name: "", slug: "", description: "" };
+const SLUG_HINT = "Used in links. Leave empty to create it from the name.";
+
+interface TermFormProps {
+  kind: TaxonomyKind;
+  action: (state: ActionState, formData: FormData) => Promise<ActionState>;
+  heading: string;
+  submitLabel: string;
+  pendingLabel: string;
+  term?: TermFormValues;
+}
+
+export default function TermForm({
+  kind,
+  action,
+  heading,
+  submitLabel,
+  pendingLabel,
+  term,
+}: TermFormProps) {
+  const [state, formAction] = useActionState(action, initialActionState);
+  const id = useId();
+  const config = TAXONOMY[kind];
+
+  // Typed values come back on errors, so nothing gets lost
+  const values = { ...EMPTY_VALUES, ...term, ...state.values };
+  const errors = state.fieldErrors ?? {};
+
+  const nameId = `${id}-name`;
+  const slugId = `${id}-slug`;
+  const descriptionId = `${id}-description`;
+
+  return (
+    <form action={formAction} className={cardClass}>
+      <h2 className="text-lg font-semibold text-foreground">{heading}</h2>
+
+      <FormField id={nameId} label="Name" errors={errors.name}>
+        <input
+          {...getFieldA11y(nameId, errors.name)}
+          name="name"
+          type="text"
+          required
+          maxLength={60}
+          autoComplete="off"
+          defaultValue={values.name}
+          placeholder={config.namePlaceholder}
+          className={inputClass}
+        />
+      </FormField>
+
+      <FormField
+        id={slugId}
+        label="Slug"
+        hint={SLUG_HINT}
+        errors={errors.slug}
+        optional
+      >
+        <input
+          {...getFieldA11y(slugId, errors.slug, SLUG_HINT)}
+          name="slug"
+          type="text"
+          maxLength={120}
+          autoComplete="off"
+          defaultValue={values.slug}
+          placeholder={config.namePlaceholder.toLowerCase()}
+          className={inputClass}
+        />
+      </FormField>
+
+      {config.hasDescription && (
+        <FormField
+          id={descriptionId}
+          label="Description"
+          errors={errors.description}
+          optional
+        >
+          <textarea
+            {...getFieldA11y(descriptionId, errors.description)}
+            name="description"
+            rows={3}
+            maxLength={300}
+            defaultValue={values.description}
+            placeholder={`What belongs in this ${config.singular}?`}
+            className={textareaClass}
+          />
+        </FormField>
+      )}
+
+      <FormStatus state={state} />
+
+      <div className="flex justify-end">
+        <SubmitButton label={submitLabel} pendingLabel={pendingLabel} />
+      </div>
+    </form>
+  );
+}
+
+===== src/components/admin/taxonomy/TermList.tsx =====
+
+import Link from "next/link";
+import { PencilSquareIcon } from "@heroicons/react/20/solid";
+
+import AdminEmptyState from "@/components/admin/ui/AdminEmptyState";
+import ConfirmActionButton from "@/components/admin/ui/ConfirmActionButton";
+import { formatUsage } from "@/lib/admin/format";
+import { deleteTermAction } from "@/lib/admin/taxonomy/actions";
+import { TAXONOMY, type TaxonomyKind } from "@/lib/admin/taxonomy/config";
+import { smallButtonClass } from "@/lib/admin/ui";
+import type { Term } from "@/lib/db/taxonomy";
+
+interface TermListProps {
+  kind: TaxonomyKind;
+  terms: Term[];
+}
+
+export default function TermList({ kind, terms }: TermListProps) {
+  const config = TAXONOMY[kind];
+
+  if (terms.length === 0) {
+    return (
+      <AdminEmptyState
+        title={`No ${config.plural} yet`}
+        description={`Add your first ${config.singular} using the form.`}
+      />
+    );
+  }
+
+  return (
+    <ul
+      role="list"
+      className="w-full bg-surface border border-border rounded-xl divide-y divide-border overflow-hidden"
+    >
+      {terms.map((term) => {
+        const usage = formatUsage(term.blog_count, term.story_count);
+        const isUsed = term.blog_count + term.story_count > 0;
+
+        return (
+          <li
+            key={term.id}
+            className="p-4 sm:px-5 flex flex-col sm:flex-row sm:items-center gap-4"
+          >
+            <div className="min-w-0 flex flex-1 flex-col gap-1">
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <p className="font-medium text-foreground">{term.name}</p>
+                <span className="text-xs text-muted">/{term.slug}</span>
+              </div>
+
+              {term.description && (
+                <p className="line-clamp-2 text-sm leading-6 text-muted">
+                  {term.description}
+                </p>
+              )}
+            </div>
+
+            <span className="w-fit px-3 py-1 shrink-0 text-xs text-muted bg-surface-muted rounded-full">
+              {usage}
+            </span>
+
+            <div className="flex shrink-0 items-start gap-2">
+              <Link
+                href={`${config.path}/${term.id}`}
+                className={smallButtonClass.secondary}
+              >
+                <PencilSquareIcon aria-hidden="true" className="w-4 h-4" />
+                Edit
+              </Link>
+
+              <ConfirmActionButton
+                action={deleteTermAction.bind(null, kind, term.id)}
+                label="Delete"
+                pendingLabel="Deleting"
+                confirmMessage={`Delete ${term.name}? This can't be undone.`}
+                size="small"
+                disabledReason={
+                  isUsed ? `Used in ${usage}. Move those first.` : undefined
+                }
+              />
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+===== src/lib/admin/taxonomy/actions.ts =====
+
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+
+import {
+  errorState,
+  successState,
+  type ActionState,
+} from "@/lib/admin/actionState";
+import { capitalize, formatUsage } from "@/lib/admin/format";
+import { readFormText } from "@/lib/admin/forms";
+import {
+  isTaxonomyKind,
+  TAXONOMY,
+  type TaxonomyKind,
+} from "@/lib/admin/taxonomy/config";
+import { requireAdmin } from "@/lib/auth/session";
+import {
+  getConstraintName,
+  isForeignKeyViolation,
+  isUniqueViolation,
+} from "@/lib/db/errors";
+import { createTerm, deleteTerm, getTerm, updateTerm } from "@/lib/db/taxonomy";
+import { slugify } from "@/lib/utils/slugify";
+import {
+  idSchema,
+  slugSchema,
+  validationErrorState,
+} from "@/lib/validation/shared";
+import { termFormSchema } from "@/lib/validation/taxonomy";
+
+const FIELDS = ["name", "slug", "description"] as const;
+const FIX_FIELDS = "Please fix the highlighted fields.";
+const NOT_FOUND = "This item could not be found.";
+
+/*
+ * Bound arguments travel through the browser, so kind and id
+ * are checked again here instead of being trusted.
+ */
+function isValidTarget(kind: unknown, id: string | null): kind is TaxonomyKind {
+  return (
+    isTaxonomyKind(kind) && (id === null || idSchema.safeParse(id).success)
+  );
+}
+
+export async function saveTerm(
+  kind: TaxonomyKind,
+  id: string | null,
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireAdmin();
+
+  if (!isValidTarget(kind, id)) {
+    return errorState(NOT_FOUND);
+  }
+
+  const config = TAXONOMY[kind];
+  const values = readFormText(formData, FIELDS);
+  const parsed = termFormSchema.safeParse(values);
+
+  if (!parsed.success) {
+    return validationErrorState(parsed.error, values);
+  }
+
+  const slugSource = parsed.data.slug || slugify(parsed.data.name);
+
+  if (!slugSource) {
+    return errorState(
+      FIX_FIELDS,
+      {
+        slug: [
+          "This name has no English letters, so add a slug like travel-notes",
+        ],
+      },
+      values,
+    );
+  }
+
+  const slug = slugSchema.safeParse(slugSource);
+
+  if (!slug.success) {
+    return errorState(
+      FIX_FIELDS,
+      { slug: slug.error.issues.map((issue) => issue.message) },
+      values,
+    );
+  }
+
+  const input = {
+    name: parsed.data.name,
+    slug: slug.data,
+    description: config.hasDescription ? parsed.data.description : "",
+  };
+
+  try {
+    if (id) {
+      await updateTerm(kind, id, input);
+    } else {
+      await createTerm(kind, input);
+    }
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      const field = getConstraintName(error).includes("slug") ? "slug" : "name";
+
+      return errorState(
+        FIX_FIELDS,
+        { [field]: [`Another ${config.singular} already uses this ${field}.`] },
+        values,
+      );
+    }
+
+    console.error(`Saving ${config.singular} failed`, error);
+    return errorState(
+      "Couldn't save right now. Please try again.",
+      undefined,
+      values,
+    );
+  }
+
+  revalidatePath("/", "layout");
+
+  return successState(
+    id ? "Changes saved." : `${capitalize(config.singular)} added.`,
+  );
+}
+
+export async function deleteTermAction(
+  kind: TaxonomyKind,
+  id: string,
+): Promise<ActionState> {
+  await requireAdmin();
+
+  if (!isValidTarget(kind, id)) {
+    return errorState(NOT_FOUND);
+  }
+
+  const config = TAXONOMY[kind];
+  const term = await getTerm(kind, id);
+
+  if (term) {
+    if (term.blog_count + term.story_count > 0) {
+      return errorState(
+        `Still used in ${formatUsage(term.blog_count, term.story_count)}. Move those first.`,
+      );
+    }
+
+    try {
+      await deleteTerm(kind, id);
+    } catch (error) {
+      if (isForeignKeyViolation(error)) {
+        return errorState("It just got used somewhere. Refresh and try again.");
+      }
+
+      console.error(`Deleting ${config.singular} failed`, error);
+      return errorState("Couldn't delete right now. Please try again.");
+    }
+  }
+
+  revalidatePath("/", "layout");
+  redirect(config.path);
+}
+
+===== src/lib/admin/taxonomy/config.ts =====
+
+export type TaxonomyKind = "categories" | "tags";
+
+type TaxonomyConfig = {
+  title: string;
+  description: string;
+  singular: string;
+  plural: string;
+  path: string;
+  namePlaceholder: string;
+  hasDescription: boolean;
+};
+
+export const TAXONOMY = {
+  categories: {
+    title: "Categories",
+    description:
+      "Group your blogs and stories by topic. Each post or story has one category.",
+    singular: "category",
+    plural: "categories",
+    path: "/admin/categories",
+    namePlaceholder: "Technology",
+    hasDescription: true,
+  },
+  tags: {
+    title: "Tags",
+    description:
+      "Small topic labels. A post or story can have as many tags as you like.",
+    singular: "tag",
+    plural: "tags",
+    path: "/admin/tags",
+    namePlaceholder: "Productivity",
+    hasDescription: false,
+  },
+} as const satisfies Record<TaxonomyKind, TaxonomyConfig>;
+
+export function isTaxonomyKind(value: unknown): value is TaxonomyKind {
+  return value === "categories" || value === "tags";
+}
+
+===== src/app/(admin)/admin/tags/page.tsx =====
+
+import type { Metadata } from "next";
+
+import TaxonomyListView from "@/components/admin/taxonomy/TaxonomyListView";
+import { requireAdmin } from "@/lib/auth/session";
+
+export const metadata: Metadata = {
+  title: "Tags",
+};
+
+export default async function TagsPage() {
+  await requireAdmin();
+
+  return <TaxonomyListView kind="tags" />;
+}
+
+===== src/app/(admin)/admin/tags/[id]/page.tsx =====
+
+import type { Metadata } from "next";
+
+import TaxonomyEditView from "@/components/admin/taxonomy/TaxonomyEditView";
+import { requireAdmin } from "@/lib/auth/session";
+
+export const metadata: Metadata = {
+  title: "Edit tag",
+};
+
+interface EditTagPageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default async function EditTagPage({ params }: EditTagPageProps) {
+  await requireAdmin();
+  const { id } = await params;
+
+  return <TaxonomyEditView kind="tags" id={id} />;
+}

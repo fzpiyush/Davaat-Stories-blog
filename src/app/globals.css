@@ -29,25 +29,30 @@
 }
 
 [data-theme="dark"] {
-  /* Navy black ink, deeper than the night sky in the hero art */
-  --background: #070a12;
-  --foreground: #e9e6df;
+  /* Soft warm gray, calm on the eyes and easy to read on */
+  --background: #1f1e1d;
+  --foreground: #f5f4ef;
 
-  --surface: #0d1220;
-  --surface-muted: #141a2e;
+  /* Cards sit one gentle step above the page */
+  --surface: #262624;
+  /* Chips, hovers and inner panels */
+  --surface-muted: #30302e;
 
-  --muted: #98a0b8;
+  --muted: #c2c0b6;
 
-  /* Lantern gold, so buttons and links glow against the ink */
-  --accent: #e2b374;
-  --accent-hover: #edc48a;
-  --accent-foreground: #0a0d18;
+  /* Lantern gold, glows softly against the gray */
+  --accent: #e8b878;
+  --accent-hover: #f2cb94;
+  --accent-foreground: #1a1916;
 
-  --border: #1d2440;
+  /* Quiet edges on cards, chips and outline buttons */
+  --border: #3d3d3a;
 
-  --wash: #0f1630;
+  /* Gray mist behind text that sits on artwork */
+  --wash: #262624;
   --highlight: #e08e1f;
-  --glow: #131b3d;
+  /* Faint light at the top of every page */
+  --glow: #2a2927;
 }
 
 @theme inline {

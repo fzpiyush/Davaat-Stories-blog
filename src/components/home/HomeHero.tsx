@@ -15,6 +15,13 @@ const HERO_ART: ThemedArtSet = {
   nightPhone: heroNightPhone,
 };
 
+/*
+ * Dark mode dims the painting into a night scene, so it sits calmly on the dark page.
+ * If you ever add a real night painting, remove the dark: classes here.
+ */
+const heroImageClass =
+  "object-cover object-top lg:object-[70%_center] dark:brightness-[0.42] dark:saturate-[0.8] dark:contrast-[1.05]";
+
 export default function HomeHero() {
   return (
     <section
@@ -25,7 +32,7 @@ export default function HomeHero() {
         <ThemedArt
           art={HERO_ART}
           breakpoint="lg"
-          imageClassName="object-cover object-top lg:object-[70%_center]"
+          imageClassName={heroImageClass}
         />
 
         {/* Ink mist behind the text, from the top on phones and tablets and from the left on wide screens */}

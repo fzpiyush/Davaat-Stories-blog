@@ -6,6 +6,7 @@ import { smallButtonClass } from "@/lib/admin/ui";
 import { pageBackgroundClass } from "@/lib/content/pageBackground";
 import {
   footerNav,
+  legalNav,
   SITE_DESCRIPTION,
   SITE_NAME,
   SITE_TAGLINE,
@@ -20,6 +21,9 @@ const stayInTouch = [
 
 const linkClass =
   "w-fit inline-block rounded-sm transition-all duration-200 hover:text-accent hover:translate-x-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent motion-reduce:transition-none";
+
+const legalLinkClass =
+  "rounded-sm transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent";
 
 const headingClass =
   "flex items-center gap-3 text-xs font-medium uppercase tracking-[0.2em] text-foreground";
@@ -129,9 +133,27 @@ export default async function PublicFooter() {
         </div>
 
         <div className="pt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-t border-border">
-          <p className="text-xs text-muted">
-            © {currentYear} {SITE_NAME}. All rights reserved.
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-x-3 gap-y-2 text-xs text-muted">
+            <p>
+              © {currentYear} {SITE_NAME}. All rights reserved.
+            </p>
+
+            <span aria-hidden="true" className="hidden sm:inline">
+              •
+            </span>
+
+            <nav aria-label="Legal">
+              <ul className="flex items-center gap-4">
+                {legalNav.map((item) => (
+                  <li key={item.href}>
+                    <Link href={item.href} className={legalLinkClass}>
+                      {item.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          </div>
 
           <a
             href="#main-content"

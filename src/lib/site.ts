@@ -15,9 +15,15 @@ export const mainNav = [
   { label: "Quotes", href: "/quotes" },
 ] as const satisfies readonly NavItem[];
 
-// About lives here now, so it's still one click away from every page
+// About lives here, so it's one click away from every page
 export const footerNav = [
   { label: "Home", href: "/" },
   ...mainNav,
   { label: "About", href: "/about" },
+] as const satisfies readonly NavItem[];
+
+// Small links in the footer's bottom bar, next to the copyright
+export const legalNav = [
+  { label: "Privacy", href: "/privacy" },
+  { label: "Terms", href: "/terms" },
 ] as const satisfies readonly NavItem[];

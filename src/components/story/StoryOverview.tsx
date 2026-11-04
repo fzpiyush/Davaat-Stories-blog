@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeftIcon, ArrowRightIcon } from "@heroicons/react/20/solid";
 
+import ShareButtons from "@/components/shared/ShareButtons";
 import { pluralize } from "@/lib/admin/format";
 import { PROGRESS_LABEL } from "@/lib/content/story";
 import { textLang } from "@/lib/content/script";
@@ -164,6 +165,13 @@ export default function StoryOverview({ story, chapters }: StoryOverviewProps) {
               The first chapter is on its way.
             </p>
           )}
+
+          <ShareButtons
+            title={story.title}
+            path={`/stories/${story.slug}`}
+            text={teaser}
+            label="Share this story"
+          />
         </div>
       </header>
 

@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeftIcon } from "@heroicons/react/20/solid";
 
+import ShareButtons from "@/components/shared/ShareButtons";
 import ViewCount from "@/components/shared/ViewCount";
 import { smallButtonClass } from "@/lib/admin/ui";
 import type { Blog, BlogSummary } from "@/lib/blog/types";
@@ -114,6 +115,7 @@ export default function BlogArticle({
   const hasToc = toc.length > 0;
   const hasRecommended = recommendedBlogs.length > 0;
   const hasAside = hasToc || hasRecommended;
+  const blogPath = `/blogs/${blog.slug}`;
 
   return (
     <article className="w-full px-4 pt-28 pb-10 sm:px-6 sm:pt-32 sm:pb-14 lg:px-8 bg-linear-to-b from-background via-surface to-background">
@@ -182,6 +184,12 @@ export default function BlogArticle({
             <span>{blog.readTime}</span>
             <ViewCount count={blog.viewCount} separated />
           </div>
+
+          <ShareButtons
+            title={blog.title}
+            path={blogPath}
+            text={blog.excerpt}
+          />
         </header>
 
         <div
@@ -243,6 +251,15 @@ export default function BlogArticle({
               )}
             </section>
           ))}
+
+          <div className="py-6 border-y border-border">
+            <ShareButtons
+              title={blog.title}
+              path={blogPath}
+              text={blog.excerpt}
+              label="Enjoyed it? Share it"
+            />
+          </div>
 
           <AuthorCard
             name={blog.author}

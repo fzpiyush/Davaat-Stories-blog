@@ -3,11 +3,15 @@ import { notFound } from "next/navigation";
 
 import PostEngagement from "@/components/engagement/PostEngagement";
 import StoryOverview from "@/components/story/StoryOverview";
+import { truncateText } from "@/lib/content/script";
 import { SITE_NAME } from "@/lib/site";
 import { getLiveChapters, getStoryBySlug } from "@/lib/story/queries";
 
 // Refreshes every minute, so new chapters show up on time
 export const revalidate = 60;
+
+// A synopsis can run to 1,000 words, previews only need a taste of it
+const DESCRIPTION_LENGTH = 160;
 
 type StoryParams = {
   slug: string;
@@ -34,21 +38,23 @@ export async function generateMetadata({
     };
   }
 
+  const description = truncateText(story.blurb, DESCRIPTION_LENGTH);
+
   return {
     title: `${story.title} | ${SITE_NAME}`,
-    description: story.blurb,
+    description,
     keywords: story.tags,
     openGraph: {
       type: "book",
       title: story.title,
-      description: story.blurb,
+      description,
       siteName: SITE_NAME,
       images: [{ url: story.cover, alt: story.title }],
     },
     twitter: {
       card: "summary_large_image",
       title: story.title,
-      description: story.blurb,
+      description,
       images: [story.cover],
     },
   };
